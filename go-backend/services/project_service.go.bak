@@ -1,0 +1,1544 @@
+package services
+
+import (
+	"errors"
+	"log"
+	"time"
+
+	"yunmeng-backend/models"
+
+	"gorm.io/gorm"
+)
+
+type ProjectService struct {
+	db *gorm.DB
+}
+
+func NewProjectService(db *gorm.DB) *ProjectService {
+	return &ProjectService{db: db}
+}
+
+// GetProjectList 获取项目列表
+func (s *ProjectService) GetProjectList(params models.ProjectQueryParams) ([]models.ProjectListResponse, int64, error) {
+	var projects []models.Project
+	var total int64
+
+	// 构建查询
+	query := s.db.Model(&models.Project{}).
+		Preload("Student.Profile").
+		Preload("Teacher.Profile").
+		Preload("Members").
+		Preload("Files").
+		Preload("Reviews")
+
+	// 搜索条件
+	if params.Search != "" {
+		search := "%" + params.Search + "%"
+		query = query.Where("projects.title LIKE ? OR projects.description LIKE ?", search, search)
+	}
+
+	// 类型筛�?
+	if params.Type != "" {
+		query = query.Where("projects.type = ?", params.Type)
+	}
+
+	// 状态筛�?
+	if params.Status != "" {
+		query = query.Where("projects.status = ?", params.Status)
+	}
+
+	// 学生ID筛�?
+	if params.StudentID > 0 {
+		query = query.Where("projects.student_id = ?", params.StudentID)
+	}
+
+	// 获取总数
+	if err := query.Count(&total).Error; err != nil {
+		log.Printf("获取项目总数失败: %v", err)
+		return nil, 0, err
+	}
+
+	// 排序
+	if params.SortBy != "" {
+		order := params.SortBy
+		if params.SortOrder == "desc" {
+			order += " DESC"
+		}
+		query = query.Order(order)
+	} else {
+		query = query.Order("projects.created_at DESC")
+	}
+
+	// 分页
+	if params.Page > 0 && params.Size > 0 {
+		offset := (params.Page - 1) * params.Size
+		query = query.Offset(offset).Limit(params.Size)
+	}
+
+	// 执行查询
+	if err := query.Find(&projects).Error; err != nil {
+		log.Printf("查询项目列表失败: %v", err)
+		return nil, 0, err
+	}
+
+	// 转换为响应格�?
+	var responses []models.ProjectListResponse
+	for _, project := range projects {
+		response := models.ProjectListResponse{
+			ID:          project.ID,
+			Title:       project.Title,
+			Description: project.Description,
+			Type:        project.Type,
+			Status:      project.Status,
+			TeacherID:   project.TeacherID,
+			SubmittedAt: project.SubmittedAt,
+			CreatedAt:   project.CreatedAt,
+			UpdatedAt:   project.UpdatedAt,
+			MemberCount: len(project.Members),
+			FileCount:   len(project.Files),
+			ReviewCount: len(project.Reviews),
+		}
+
+		// 添加学生信息
+		if project.Student != nil && project.Student.Profile != nil {
+			response.StudentName = project.Student.Profile.RealName
+			response.StudentID = project.Student.Profile.StudentID
+		}
+
+		// 添加教师信息
+		if project.Teacher != nil && project.Teacher.Profile != nil {
+			response.TeacherName = project.Teacher.Profile.RealName
+		}
+
+		responses = append(responses, response)
+	}
+
+	log.Printf("项目列表查询完成 - 总数: %d, 返回数量: %d", total, len(responses))
+	return responses, total, nil
+}
+
+// GetProjectByID 根据ID获取项目详情
+func (s *ProjectService) GetProjectByID(id uint) (*models.ProjectDetailResponse, error) {
+	var project models.Project
+	err := s.db.Preload("Student.Profile").
+		Preload("Teacher.Profile").
+		Preload("Members").
+		Preload("Files").
+		Preload("Reviews.Reviewer.Profile").
+		First(&project, id).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.New("项目不存�?)
+		}
+		log.Printf("查询项目详情失败 - 项目ID: %d, 错误: %v", id, err)
+		return nil, err
+	}
+
+	// 构建响应数据
+	response := &models.ProjectDetailResponse{
+		ID:          project.ID,
+		Title:       project.Title,
+		Description: project.Description,
+		Type:        project.Type,
+		Status:      project.Status,
+		SubmittedAt: project.SubmittedAt,
+		CreatedAt:   project.CreatedAt,
+		UpdatedAt:   project.UpdatedAt,
+	}
+
+	// 添加学生信息
+	if project.Student != nil && project.Student.Profile != nil {
+		response.Student.ID = project.Student.ID
+		response.Student.Username = project.Student.Username
+		response.Student.RealName = project.Student.Profile.RealName
+		response.Student.Email = project.Student.Email
+		response.Student.Phone = project.Student.Profile.Phone
+		response.Student.Department = project.Student.Profile.Department
+		response.Student.StudentID = project.Student.Profile.StudentID
+	}
+
+	// 添加教师信息
+	if project.Teacher != nil && project.Teacher.Profile != nil {
+		response.Teacher.ID = project.Teacher.ID
+		response.Teacher.Username = project.Teacher.Username
+		response.Teacher.RealName = project.Teacher.Profile.RealName
+		response.Teacher.Email = project.Teacher.Email
+		response.Teacher.Phone = project.Teacher.Profile.Phone
+		response.Teacher.Department = project.Teacher.Profile.Department
+	}
+
+	// 添加成员信息
+	for _, member := range project.Members {
+		response.Members = append(response.Members, struct {
+			ID            uint   `json:"id"`
+			Name          string `json:"name"`
+			StudentNumber string `json:"studentNumber"`
+			Role          string `json:"role"`
+		}{
+			ID:            member.ID,
+			Name:          member.Name,
+			StudentNumber: member.StudentNumber,
+			Role:          member.Role,
+		})
+	}
+
+	// 添加文件信息
+	for _, file := range project.Files {
+		response.Files = append(response.Files, struct {
+			ID         uint      `json:"id"`
+			FileName   string    `json:"fileName"`
+			FileURL    string    `json:"fileUrl"`
+			UploadTime time.Time `json:"uploadTime"`
+		}{
+			ID:         file.ID,
+			FileName:   file.FileName,
+			FileURL:    file.FileURL,
+			UploadTime: file.UploadTime,
+		})
+	}
+
+	// 添加审核信息
+	for _, review := range project.Reviews {
+		reviewInfo := struct {
+			ID         uint      `json:"id"`
+			Status     string    `json:"status"`
+			Comments   string    `json:"comments"`
+			ReviewTime time.Time `json:"reviewTime"`
+			Reviewer   struct {
+				ID       uint   `json:"id"`
+				Username string `json:"username"`
+				RealName string `json:"realName"`
+			} `json:"reviewer"`
+		}{
+			ID:         review.ID,
+			Status:     review.Status,
+			Comments:   review.Comments,
+			ReviewTime: review.ReviewTime,
+		}
+
+		if review.Reviewer != nil && review.Reviewer.Profile != nil {
+			reviewInfo.Reviewer.ID = review.Reviewer.ID
+			reviewInfo.Reviewer.Username = review.Reviewer.Username
+			reviewInfo.Reviewer.RealName = review.Reviewer.Profile.RealName
+		}
+
+		response.Reviews = append(response.Reviews, reviewInfo)
+	}
+
+	log.Printf("项目详情查询完成 - 项目ID: %d, 标题: %s", id, project.Title)
+	return response, nil
+}
+
+// CreateProject 创建项目
+func (s *ProjectService) CreateProject(studentID uint, req models.ProjectCreateRequest) (*models.ProjectCreateResponse, error) {
+	// 开始事�?
+	tx := s.db.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	// 创建项目
+	project := models.Project{
+		Title:       req.Title,
+		Description: req.Description,
+		Type:        req.Type,
+		Status:      req.Status,
+		StudentID:   studentID,
+		TeacherID:   req.TeacherID,
+	}
+
+	if err := tx.Create(&project).Error; err != nil {
+		tx.Rollback()
+		log.Printf("创建项目失败: %v", err)
+		return nil, errors.New("创建项目失败")
+	}
+
+	// 创建项目成员
+	for _, memberReq := range req.Members {
+		member := models.ProjectMember{
+			ProjectID:     project.ID,
+			Name:          memberReq.Name,
+			StudentNumber: memberReq.StudentNumber,
+			Role:          memberReq.Role,
+		}
+
+		if err := tx.Create(&member).Error; err != nil {
+			tx.Rollback()
+			log.Printf("创建项目成员失败: %v", err)
+			return nil, errors.New("创建项目成员失败")
+		}
+	}
+
+	// 创建项目附件
+	for _, fileReq := range req.Attachments {
+		file := models.ProjectFile{
+			ProjectID: project.ID,
+			FileName:  fileReq.FileName,
+			FileURL:   fileReq.FileURL,
+		}
+
+		if err := tx.Create(&file).Error; err != nil {
+			tx.Rollback()
+			log.Printf("创建项目附件失败: %v", err)
+			return nil, errors.New("创建项目附件失败")
+		}
+	}
+
+	// 提交事务
+	if err := tx.Commit().Error; err != nil {
+		log.Printf("提交事务失败: %v", err)
+		return nil, errors.New("创建项目失败")
+	}
+
+	log.Printf("项目创建成功 - 项目ID: %d, 标题: %s", project.ID, project.Title)
+	return &models.ProjectCreateResponse{ProjectID: project.ID}, nil
+}
+
+// UpdateProject 更新项目
+func (s *ProjectService) UpdateProject(id uint, studentID uint, req models.ProjectUpdateRequest) error {
+	// 检查项目是否存�?
+	var project models.Project
+	if err := s.db.First(&project, id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return errors.New("项目不存�?)
+		}
+		return err
+	}
+
+	// 检查权限：只有项目创建者可以修�?
+	if project.StudentID != studentID {
+		return errors.New("无权限修改此项目")
+	}
+
+	// 检查状态：只有草稿或已驳回状态的项目可以修改
+	if project.Status != "draft" && project.Status != "rejected" {
+		return errors.New("只有草稿或已驳回状态的项目可以修改")
+	}
+
+	// 开始事�?
+	tx := s.db.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	// 更新项目基本信息
+	updates := make(map[string]interface{})
+	if req.Title != "" {
+		updates["title"] = req.Title
+	}
+	if req.Description != "" {
+		updates["description"] = req.Description
+	}
+	if req.Type != "" {
+		updates["type"] = req.Type
+	}
+	if req.Status != "" {
+		updates["status"] = req.Status
+	}
+	if req.TeacherID > 0 {
+		updates["teacher_id"] = req.TeacherID
+	}
+
+	if len(updates) > 0 {
+		if err := tx.Model(&project).Updates(updates).Error; err != nil {
+			tx.Rollback()
+			log.Printf("更新项目失败: %v", err)
+			return errors.New("更新项目失败")
+		}
+	}
+
+	// 更新项目成员
+	if req.Members != nil {
+		// 删除现有成员
+		if err := tx.Where("project_id = ?", id).Delete(&models.ProjectMember{}).Error; err != nil {
+			tx.Rollback()
+			log.Printf("删除项目成员失败: %v", err)
+			return errors.New("更新项目成员失败")
+		}
+
+		// 创建新成�?
+		for _, memberReq := range req.Members {
+			member := models.ProjectMember{
+				ProjectID:     id,
+				Name:          memberReq.Name,
+				StudentNumber: memberReq.StudentNumber,
+				Role:          memberReq.Role,
+			}
+
+			if err := tx.Create(&member).Error; err != nil {
+				tx.Rollback()
+				log.Printf("创建项目成员失败: %v", err)
+				return errors.New("更新项目成员失败")
+			}
+		}
+	}
+
+	// 更新项目文件
+	if req.Files != nil {
+		// 删除现有文件
+		if err := tx.Where("project_id = ?", id).Delete(&models.ProjectFile{}).Error; err != nil {
+			tx.Rollback()
+			log.Printf("删除项目文件失败: %v", err)
+			return errors.New("更新项目文件失败")
+		}
+
+		// 创建新文�?
+		for _, fileReq := range req.Files {
+			file := models.ProjectFile{
+				ProjectID: id,
+				FileName:  fileReq.FileName,
+				FileURL:   fileReq.FileURL,
+			}
+
+			if err := tx.Create(&file).Error; err != nil {
+				tx.Rollback()
+				log.Printf("创建项目文件失败: %v", err)
+				return errors.New("更新项目文件失败")
+			}
+		}
+	}
+
+	// 提交事务
+	if err := tx.Commit().Error; err != nil {
+		log.Printf("提交事务失败: %v", err)
+		return errors.New("更新项目失败")
+	}
+
+	log.Printf("项目更新成功 - 项目ID: %d", id)
+	return nil
+}
+
+// DeleteProject 删除项目
+func (s *ProjectService) DeleteProject(id uint) error {
+	// 检查项目是否存�?
+	var project models.Project
+	if err := s.db.First(&project, id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return errors.New("项目不存�?)
+		}
+		return err
+	}
+
+	// 检查状态：只有草稿或已驳回状态的项目可以删除
+	if project.Status != "draft" && project.Status != "rejected" {
+		return errors.New("只有草稿或已驳回状态的项目可以删除")
+	}
+
+	// 开始事�?
+	tx := s.db.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	// 删除项目（关联数据会通过CASCADE自动删除�?
+	if err := tx.Delete(&project).Error; err != nil {
+		tx.Rollback()
+		log.Printf("删除项目失败: %v", err)
+		return errors.New("删除项目失败")
+	}
+
+	// 提交事务
+	if err := tx.Commit().Error; err != nil {
+		log.Printf("提交事务失败: %v", err)
+		return errors.New("删除项目失败")
+	}
+
+	log.Printf("项目删除成功 - 项目ID: %d", id)
+	return nil
+}
+
+// ReviewProject 审核项目
+func (s *ProjectService) ReviewProject(projectID uint, reviewerID uint, req models.ProjectReviewRequest) error {
+	// 检查项目是否存�?
+	var project models.Project
+	if err := s.db.First(&project, projectID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return errors.New("项目不存�?)
+		}
+		return err
+	}
+
+	// 开始事�?
+	tx := s.db.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	// 创建审核记录
+	review := models.ProjectReview{
+		ProjectID:  projectID,
+		ReviewerID: reviewerID,
+		Status:     req.Status,
+		Comments:   req.Comments,
+	}
+
+	if err := tx.Create(&review).Error; err != nil {
+		tx.Rollback()
+		log.Printf("创建审核记录失败: %v", err)
+		return errors.New("创建审核记录失败")
+	}
+
+	// 更新项目状�?
+	if err := tx.Model(&project).Update("status", req.Status).Error; err != nil {
+		tx.Rollback()
+		log.Printf("更新项目状态失�? %v", err)
+		return errors.New("更新项目状态失�?)
+	}
+
+	// 提交事务
+	if err := tx.Commit().Error; err != nil {
+		log.Printf("提交事务失败: %v", err)
+		return errors.New("审核项目失败")
+	}
+
+	log.Printf("项目审核完成 - 项目ID: %d, 审核结果: %s", projectID, req.Status)
+	return nil
+}
+
+// GetProjectStats 获取项目统计信息
+func (s *ProjectService) GetProjectStats() (*models.ProjectStats, error) {
+	var stats models.ProjectStats
+
+	// 基础统计
+	if err := s.db.Model(&models.Project{}).Count(&stats.TotalProjects).Error; err != nil {
+		return nil, err
+	}
+
+	if err := s.db.Model(&models.Project{}).Where("status = ?", "draft").Count(&stats.DraftProjects).Error; err != nil {
+		return nil, err
+	}
+
+	if err := s.db.Model(&models.Project{}).Where("status = ?", "pending").Count(&stats.PendingProjects).Error; err != nil {
+		return nil, err
+	}
+
+	if err := s.db.Model(&models.Project{}).Where("status = ?", "approved").Count(&stats.ApprovedProjects).Error; err != nil {
+		return nil, err
+	}
+
+	if err := s.db.Model(&models.Project{}).Where("status = ?", "rejected").Count(&stats.RejectedProjects).Error; err != nil {
+		return nil, err
+	}
+
+	if err := s.db.Model(&models.Project{}).Where("type = ?", "科研").Count(&stats.ResearchProjects).Error; err != nil {
+		return nil, err
+	}
+
+	if err := s.db.Model(&models.Project{}).Where("type = ?", "竞赛").Count(&stats.CompetitionProjects).Error; err != nil {
+		return nil, err
+	}
+
+	// 类型统计
+	stats.TypeStats = make(map[string]int64)
+	var typeResults []struct {
+		Type  string `json:"type"`
+		Count int64  `json:"count"`
+	}
+	if err := s.db.Model(&models.Project{}).
+		Select("type, count(*) as count").
+		Group("type").
+		Find(&typeResults).Error; err != nil {
+		return nil, err
+	}
+
+	for _, result := range typeResults {
+		stats.TypeStats[result.Type] = result.Count
+	}
+
+	// 状态统�?
+	stats.StatusStats = make(map[string]int64)
+	var statusResults []struct {
+		Status string `json:"status"`
+		Count  int64  `json:"count"`
+	}
+	if err := s.db.Model(&models.Project{}).
+		Select("status, count(*) as count").
+		Group("status").
+		Find(&statusResults).Error; err != nil {
+		return nil, err
+	}
+
+	for _, result := range statusResults {
+		stats.StatusStats[result.Status] = result.Count
+	}
+
+	// 月度统计（最�?2个月�?
+	stats.MonthlyStats = make(map[string]int64)
+	now := time.Now()
+	for i := 0; i < 12; i++ {
+		month := now.AddDate(0, -i, 0)
+		monthKey := month.Format("2006-01")
+
+		var count int64
+		startOfMonth := time.Date(month.Year(), month.Month(), 1, 0, 0, 0, 0, month.Location())
+		endOfMonth := startOfMonth.AddDate(0, 1, 0).Add(-time.Second)
+
+		if err := s.db.Model(&models.Project{}).
+			Where("create_time BETWEEN ? AND ?", startOfMonth, endOfMonth).
+			Count(&count).Error; err != nil {
+			return nil, err
+		}
+
+		stats.MonthlyStats[monthKey] = count
+	}
+
+	return &stats, nil
+}
+
+// GetMyProjects 获取我的项目列表
+func (s *ProjectService) GetMyProjects(studentID uint, status string) ([]models.ProjectMyListResponse, error) {
+	var projects []models.Project
+	query := s.db.Where("student_id = ?", studentID)
+
+	if status != "" {
+		query = query.Where("status = ?", status)
+	}
+
+	err := query.Order("create_time DESC").Find(&projects).Error
+	if err != nil {
+		log.Printf("获取我的项目列表失败: %v", err)
+		return nil, err
+	}
+
+	var responses []models.ProjectMyListResponse
+	for _, project := range projects {
+		responses = append(responses, models.ProjectMyListResponse{
+			ID:        project.ID,
+			Title:     project.Title,
+			Type:      project.Type,
+			Status:    project.Status,
+			CreatedAt: project.CreatedAt,
+		})
+	}
+
+	return responses, nil
+}
+
+// GetProjectsForTeacher 获取教师查看的项目列�?
+func (s *ProjectService) GetProjectsForTeacher(params models.ProjectQueryParams) ([]models.ProjectListForTeacherResponse, int64, error) {
+	var projects []models.Project
+	var total int64
+
+	query := s.db.Model(&models.Project{}).Preload("Student.Profile")
+
+	// 状态筛�?
+	if params.Status != "" {
+		query = query.Where("projects.status = ?", params.Status)
+	}
+
+	// 类型筛�?
+	if params.Type != "" {
+		query = query.Where("projects.type = ?", params.Type)
+	}
+
+	// 获取总数
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	// 分页
+	if params.Page > 0 && params.Size > 0 {
+		offset := (params.Page - 1) * params.Size
+		query = query.Offset(offset).Limit(params.Size)
+	}
+
+	// 执行查询
+	if err := query.Order("projects.created_at DESC").Find(&projects).Error; err != nil {
+		return nil, 0, err
+	}
+
+	var responses []models.ProjectListForTeacherResponse
+	for _, project := range projects {
+		response := models.ProjectListForTeacherResponse{
+			ID:     project.ID,
+			Title:  project.Title,
+			Type:   project.Type,
+			Status: project.Status,
+		}
+
+		if project.Student != nil && project.Student.Profile != nil {
+			response.Student.Name = project.Student.Profile.RealName
+			response.Student.StudentID = project.Student.Profile.StudentID
+		}
+
+		responses = append(responses, response)
+	}
+
+	return responses, total, nil
+}
+
+// ReviewProjectWithResponse 审核项目并返回响�?
+func (s *ProjectService) ReviewProjectWithResponse(projectID uint, reviewerID uint, req models.ProjectReviewRequest) (*models.ProjectReviewResponse, error) {
+	// 检查项目是否存�?
+	var project models.Project
+	if err := s.db.First(&project, projectID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.New("项目不存�?)
+		}
+		return nil, err
+	}
+
+	// 开始事�?
+	tx := s.db.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	// 创建审核记录
+	review := models.ProjectReview{
+		ProjectID:  projectID,
+		ReviewerID: reviewerID,
+		Status:     req.Status,
+		Comments:   req.Comments,
+	}
+
+	if err := tx.Create(&review).Error; err != nil {
+		tx.Rollback()
+		log.Printf("创建审核记录失败: %v", err)
+		return nil, errors.New("创建审核记录失败")
+	}
+
+	// 更新项目状�?
+	if err := tx.Model(&project).Update("status", req.Status).Error; err != nil {
+		tx.Rollback()
+		log.Printf("更新项目状态失�? %v", err)
+		return nil, errors.New("更新项目状态失�?)
+	}
+
+	// 提交事务
+	if err := tx.Commit().Error; err != nil {
+		log.Printf("提交事务失败: %v", err)
+		return nil, errors.New("审核项目失败")
+	}
+
+	// 获取审核者信�?
+	var reviewer models.User
+	if err := s.db.Preload("Profile").First(&reviewer, reviewerID).Error; err != nil {
+		log.Printf("获取审核者信息失�? %v", err)
+	}
+
+	reviewerName := reviewer.Username
+	if reviewer.Profile != nil {
+		reviewerName = reviewer.Profile.RealName
+	}
+
+	return &models.ProjectReviewResponse{
+		Reviewer:   reviewerName,
+		ReviewTime: review.ReviewTime,
+	}, nil
+}
+
+// GetProjectReviews 获取项目审核记录
+func (s *ProjectService) GetProjectReviews(projectID uint) ([]models.ProjectReviewRecordResponse, error) {
+	var reviews []models.ProjectReview
+	err := s.db.Preload("Reviewer.Profile").Where("project_id = ?", projectID).Order("review_time DESC").Find(&reviews).Error
+	if err != nil {
+		return nil, err
+	}
+
+	var responses []models.ProjectReviewRecordResponse
+	for _, review := range reviews {
+		reviewerName := review.Reviewer.Username
+		if review.Reviewer.Profile != nil {
+			reviewerName = review.Reviewer.Profile.RealName
+		}
+
+		responses = append(responses, models.ProjectReviewRecordResponse{
+			Reviewer:   reviewerName,
+			Status:     review.Status,
+			Comments:   review.Comments,
+			ReviewTime: review.ReviewTime,
+		})
+	}
+
+	return responses, nil
+}
+
+// GetDB 获取数据库实�?
+// BindStudentTeacher 绑定学生和教�?
+func (s *ProjectService) BindStudentTeacher(req models.StudentTeacherBindRequest) (*models.StudentTeacherBindResponse, error) {
+	// 检查学生是否存�?
+	var student models.User
+	if err := s.db.Preload("Profile").First(&student, req.StudentID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.New("学生不存�?)
+		}
+		return nil, err
+	}
+
+	// 检查教师是否存�?
+	var teacher models.User
+	if err := s.db.Preload("Profile").First(&teacher, req.TeacherID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.New("教师不存�?)
+		}
+		return nil, err
+	}
+
+	// 检查是否已经绑�?
+	var existingBind models.StudentTeacher
+	if err := s.db.Where("student_id = ? AND teacher_id = ?", req.StudentID, req.TeacherID).First(&existingBind).Error; err == nil {
+		return nil, errors.New("该学生和教师已经绑定")
+	}
+
+	// 创建绑定关系
+	bind := models.StudentTeacher{
+		StudentID: req.StudentID,
+		TeacherID: req.TeacherID,
+	}
+
+	if err := s.db.Create(&bind).Error; err != nil {
+		log.Printf("创建学生教师绑定失败: %v", err)
+		return nil, errors.New("创建绑定关系失败")
+	}
+
+	// 构建响应
+	response := &models.StudentTeacherBindResponse{
+		ID:        bind.ID,
+		StudentID: bind.StudentID,
+		TeacherID: bind.TeacherID,
+		BindTime:  bind.BindTime,
+	}
+
+	// 添加学生信息
+	if student.Profile != nil {
+		response.Student.ID = student.ID
+		response.Student.Username = student.Username
+		response.Student.RealName = student.Profile.RealName
+	}
+
+	// 添加教师信息
+	if teacher.Profile != nil {
+		response.Teacher.ID = teacher.ID
+		response.Teacher.Username = teacher.Username
+		response.Teacher.RealName = teacher.Profile.RealName
+	}
+
+	log.Printf("学生教师绑定成功 - 学生ID: %d, 教师ID: %d", req.StudentID, req.TeacherID)
+	return response, nil
+}
+
+// GetTeacherList 获取教师列表
+func (s *ProjectService) GetTeacherList() ([]models.TeacherListResponse, error) {
+	var teachers []models.User
+	err := s.db.Preload("Profile").
+		Joins("JOIN user_roles ur ON users.id = ur.user_id").
+		Joins("JOIN roles r ON ur.role_id = r.id").
+		Where("r.role_key = ?", "teacher").
+		Where("users.status = ?", "active").
+		Find(&teachers).Error
+
+	if err != nil {
+		log.Printf("获取教师列表失败: %v", err)
+		return nil, err
+	}
+
+	var responses []models.TeacherListResponse
+	for _, teacher := range teachers {
+		response := models.TeacherListResponse{
+			ID:       teacher.ID,
+			Username: teacher.Username,
+			Email:    teacher.Email,
+		}
+
+		if teacher.Profile != nil {
+			response.RealName = teacher.Profile.RealName
+			response.Phone = teacher.Profile.Phone
+			response.Department = teacher.Profile.Department
+			response.Bio = teacher.Profile.Bio
+		}
+
+		responses = append(responses, response)
+	}
+
+	return responses, nil
+}
+
+// GetStudentTeachers 获取学生的指导教师列�?
+func (s *ProjectService) GetStudentTeachers(studentID uint) ([]models.TeacherListResponse, error) {
+	var teachers []models.User
+	err := s.db.Preload("Profile").
+		Joins("JOIN student_teacher st ON users.id = st.teacher_id").
+		Where("st.student_id = ?", studentID).
+		Where("users.status = ?", "active").
+		Find(&teachers).Error
+
+	if err != nil {
+		log.Printf("获取学生指导教师列表失败: %v", err)
+		return nil, err
+	}
+
+	var responses []models.TeacherListResponse
+	for _, teacher := range teachers {
+		response := models.TeacherListResponse{
+			ID:       teacher.ID,
+			Username: teacher.Username,
+			Email:    teacher.Email,
+		}
+
+		if teacher.Profile != nil {
+			response.RealName = teacher.Profile.RealName
+			response.Phone = teacher.Profile.Phone
+			response.Department = teacher.Profile.Department
+			response.Bio = teacher.Profile.Bio
+		}
+
+		responses = append(responses, response)
+	}
+
+	return responses, nil
+}
+
+// SubmitProject 提交项目审核
+func (s *ProjectService) SubmitProject(projectID, studentID uint) error {
+	// 检查项目是否存�?
+	var project models.Project
+	if err := s.db.First(&project, projectID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return errors.New("项目不存�?)
+		}
+		return err
+	}
+
+	// 检查权限：只有项目创建者可以提�?
+	if project.StudentID != studentID {
+		return errors.New("无权限提交此项目")
+	}
+
+	// 检查状态：只有草稿状态的项目可以提交
+	if project.Status != "draft" {
+		return errors.New("只有草稿状态的项目可以提交")
+	}
+
+	// 更新项目状态和提交时间
+	now := time.Now()
+	updates := map[string]interface{}{
+		"status":       "pending",
+		"submitted_at": &now,
+	}
+
+	if err := s.db.Model(&project).Updates(updates).Error; err != nil {
+		log.Printf("提交项目失败: %v", err)
+		return errors.New("提交项目失败")
+	}
+
+	log.Printf("项目提交成功 - 项目ID: %d", projectID)
+	return nil
+}
+
+// UnbindStudentTeacher 解绑学生和教�?
+func (s *ProjectService) UnbindStudentTeacher(studentID, teacherID uint) error {
+	result := s.db.Where("student_id = ? AND teacher_id = ?", studentID, teacherID).Delete(&models.StudentTeacher{})
+	if result.Error != nil {
+		log.Printf("解绑学生教师失败: %v", result.Error)
+		return errors.New("解绑失败")
+	}
+
+	if result.RowsAffected == 0 {
+		return errors.New("绑定关系不存�?)
+	}
+
+	log.Printf("学生教师解绑成功 - 学生ID: %d, 教师ID: %d", studentID, teacherID)
+	return nil
+}
+
+func (s *ProjectService) GetDB() *gorm.DB {
+	return s.db
+}
+
+// GetTeacherProjects 获取当前登录教师的所有指导项�?
+func (s *ProjectService) GetTeacherProjects(teacherID uint, params models.TeacherProjectQueryParams) ([]models.TeacherProjectResponse, int64, error) {
+	var projects []models.Project
+	var total int64
+
+	// 构建查询 - 只查询该教师指导的项�?
+	query := s.db.Model(&models.Project{}).
+		Preload("Student.Profile").
+		Preload("Members").
+		Preload("Files").
+		Preload("Reviews").
+		Where("projects.teacher_id = ?", teacherID)
+
+	// 搜索条件
+	if params.Search != "" {
+		search := "%" + params.Search + "%"
+		query = query.Where("projects.title LIKE ? OR projects.description LIKE ?", search, search)
+	}
+
+	// 类型筛�?
+	if params.Type != "" {
+		query = query.Where("projects.type = ?", params.Type)
+	}
+
+	// 状态筛�?
+	if params.Status != "" {
+		query = query.Where("projects.status = ?", params.Status)
+	}
+
+	// 学生ID筛�?
+	if params.StudentID > 0 {
+		query = query.Where("projects.student_id = ?", params.StudentID)
+	}
+
+	// 获取总数
+	if err := query.Count(&total).Error; err != nil {
+		log.Printf("获取教师项目总数失败: %v", err)
+		return nil, 0, err
+	}
+
+	// 排序
+	if params.SortBy != "" {
+		order := params.SortBy
+		if params.SortOrder == "desc" {
+			order += " DESC"
+		}
+		query = query.Order(order)
+	} else {
+		query = query.Order("projects.created_at DESC")
+	}
+
+	// 分页
+	if params.Page > 0 && params.Size > 0 {
+		offset := (params.Page - 1) * params.Size
+		query = query.Offset(offset).Limit(params.Size)
+	}
+
+	// 执行查询
+	if err := query.Find(&projects).Error; err != nil {
+		log.Printf("查询教师项目列表失败: %v", err)
+		return nil, 0, err
+	}
+
+	// 转换为响应格�?
+	var responses []models.TeacherProjectResponse
+	for _, project := range projects {
+		response := models.TeacherProjectResponse{
+			ID:          project.ID,
+			Title:       project.Title,
+			Description: project.Description,
+			Type:        project.Type,
+			Status:      project.Status,
+			SubmittedAt: project.SubmittedAt,
+			CreatedAt:   project.CreatedAt,
+			UpdatedAt:   project.UpdatedAt,
+			MemberCount: len(project.Members),
+			FileCount:   len(project.Files),
+			ReviewCount: len(project.Reviews),
+		}
+
+		// 填充学生信息
+		if project.Student != nil && project.Student.Profile != nil {
+			response.Student.ID = project.Student.ID
+			response.Student.Username = project.Student.Username
+			response.Student.RealName = project.Student.Profile.RealName
+			response.Student.Email = project.Student.Email
+			response.Student.Phone = project.Student.Profile.Phone
+			response.Student.Department = project.Student.Profile.Department
+			response.Student.StudentID = project.Student.Profile.StudentID
+		}
+
+		responses = append(responses, response)
+	}
+
+	return responses, total, nil
+}
+
+// GetTeacherListWithFilter 获取教师列表（支持院系筛选）
+func (s *ProjectService) GetTeacherListWithFilter(params models.TeacherQueryParams) ([]models.TeacherListResponse, int64, error) {
+	var users []models.User
+	var total int64
+
+	// 构建查询 - 只查询教师角色的用户
+	query := s.db.Model(&models.User{}).
+		Joins("JOIN user_roles ur ON users.id = ur.user_id").
+		Joins("JOIN roles r ON ur.role_id = r.id").
+		Preload("Profile").
+		Where("r.role_key = ?", "teacher").
+		Where("users.status = ?", "active")
+
+	// 搜索条件
+	if params.Search != "" {
+		search := "%" + params.Search + "%"
+		query = query.Where("users.username LIKE ? OR user_profiles.real_name LIKE ?", search, search)
+	}
+
+	// 院系筛�?
+	if params.Department != "" {
+		query = query.Where("user_profiles.department = ?", params.Department)
+	}
+
+	// 获取总数
+	if err := query.Count(&total).Error; err != nil {
+		log.Printf("获取教师总数失败: %v", err)
+		return nil, 0, err
+	}
+
+	// 排序
+	if params.SortBy != "" {
+		order := params.SortBy
+		if params.SortOrder == "desc" {
+			order += " DESC"
+		}
+		query = query.Order(order)
+	} else {
+		query = query.Order("users.create_time DESC")
+	}
+
+	// 分页
+	if params.Page > 0 && params.Size > 0 {
+		offset := (params.Page - 1) * params.Size
+		query = query.Offset(offset).Limit(params.Size)
+	}
+
+	// 执行查询
+	if err := query.Find(&users).Error; err != nil {
+		log.Printf("查询教师列表失败: %v", err)
+		return nil, 0, err
+	}
+
+	// 转换为响应格�?
+	var responses []models.TeacherListResponse
+	for _, user := range users {
+		response := models.TeacherListResponse{
+			ID:         user.ID,
+			Username:   user.Username,
+			RealName:   "",
+			Email:      user.Email,
+			Phone:      "",
+			Department: "",
+			Bio:        "",
+		}
+
+		if user.Profile != nil {
+			response.RealName = user.Profile.RealName
+			response.Phone = user.Profile.Phone
+			response.Department = user.Profile.Department
+			response.Bio = user.Profile.Bio
+		}
+
+		responses = append(responses, response)
+	}
+
+	return responses, total, nil
+}
+
+// BindStudentToTeacher 学生绑定教师（学生端接口�?
+func (s *ProjectService) BindStudentToTeacher(studentID uint, req models.StudentBindTeacherRequest) (*models.StudentBindTeacherResponse, error) {
+	// 检查学生是否存�?
+	var student models.User
+	if err := s.db.Preload("Profile").First(&student, studentID).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, errors.New("学生不存�?)
+		}
+		return nil, err
+	}
+
+	// 检查教师是否存在且是教师角�?
+	var teacher models.User
+	if err := s.db.Preload("Profile").
+		Joins("JOIN user_roles ur ON users.id = ur.user_id").
+		Joins("JOIN roles r ON ur.role_id = r.id").
+		Where("r.role_key = ? AND users.id = ?", "teacher", req.TeacherID).
+		First(&teacher).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, errors.New("教师不存在或不是教师角色")
+		}
+		return nil, err
+	}
+
+	// 检查是否已经绑�?
+	var existingBind models.StudentTeacher
+	if err := s.db.Where("student_id = ? AND teacher_id = ?", studentID, req.TeacherID).First(&existingBind).Error; err == nil {
+		return nil, errors.New("该学生已经绑定此教师")
+	}
+
+	// 创建绑定关系
+	studentTeacher := models.StudentTeacher{
+		StudentID: studentID,
+		TeacherID: req.TeacherID,
+		BindTime:  time.Now(),
+	}
+
+	if err := s.db.Create(&studentTeacher).Error; err != nil {
+		log.Printf("创建学生教师绑定失败: %v", err)
+		return nil, err
+	}
+
+	// 构建响应
+	response := &models.StudentBindTeacherResponse{
+		ID:        studentTeacher.ID,
+		StudentID: studentTeacher.StudentID,
+		TeacherID: studentTeacher.TeacherID,
+		BindTime:  studentTeacher.BindTime,
+	}
+
+	// 填充教师信息
+	response.Teacher.ID = teacher.ID
+	response.Teacher.Username = teacher.Username
+	response.Teacher.Email = teacher.Email
+	if teacher.Profile != nil {
+		response.Teacher.RealName = teacher.Profile.RealName
+		response.Teacher.Phone = teacher.Profile.Phone
+		response.Teacher.Department = teacher.Profile.Department
+		response.Teacher.Bio = teacher.Profile.Bio
+	}
+
+	return response, nil
+}
+
+// ValidateProjectUpdate 验证项目更新权限（项目提交后禁止修改指导老师�?
+func (s *ProjectService) ValidateProjectUpdate(projectID uint, studentID uint) error {
+	var project models.Project
+	if err := s.db.First(&project, projectID).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return errors.New("项目不存�?)
+		}
+		return err
+	}
+
+	// 检查项目是否属于该学生
+	if project.StudentID != studentID {
+		return errors.New("无权修改此项�?)
+	}
+
+	// 检查项目状态，已提交的项目不能修改指导老师
+	if project.Status != "draft" {
+		return errors.New("项目已提交，无法修改指导老师")
+	}
+
+	return nil
+}
+
+// GetMyStudents 获取指定教师指导的学生列�?
+func (s *ProjectService) GetMyStudents(teacherID uint, params models.TeacherQueryParams) ([]models.TeacherListResponse, int64, error) {
+	var users []models.User
+	var total int64
+
+	// 构建查询 - 查询绑定到该教师的学�?
+	query := s.db.Model(&models.User{}).
+		Joins("JOIN student_teacher st ON users.id = st.student_id").
+		Joins("JOIN user_roles ur ON users.id = ur.user_id").
+		Joins("JOIN roles r ON ur.role_id = r.id").
+		Preload("Profile").
+		Where("st.teacher_id = ?", teacherID).
+		Where("r.role_key = ?", "student").
+		Where("users.status = ?", "active")
+
+	// 搜索条件
+	if params.Search != "" {
+		search := "%" + params.Search + "%"
+		query = query.Where("users.username LIKE ? OR user_profiles.real_name LIKE ?", search, search)
+	}
+
+	// 院系筛�?
+	if params.Department != "" {
+		query = query.Where("user_profiles.department = ?", params.Department)
+	}
+
+	// 获取总数
+	if err := query.Count(&total).Error; err != nil {
+		log.Printf("获取教师学生总数失败: %v", err)
+		return nil, 0, err
+	}
+
+	// 排序
+	if params.SortBy != "" {
+		order := params.SortBy
+		if params.SortOrder == "desc" {
+			order += " DESC"
+		}
+		query = query.Order(order)
+	} else {
+		query = query.Order("users.create_time DESC")
+	}
+
+	// 分页
+	if params.Page > 0 && params.Size > 0 {
+		offset := (params.Page - 1) * params.Size
+		query = query.Offset(offset).Limit(params.Size)
+	}
+
+	// 执行查询
+	if err := query.Find(&users).Error; err != nil {
+		log.Printf("查询教师学生列表失败: %v", err)
+		return nil, 0, err
+	}
+
+	// 转换为响应格�?
+	var responses []models.TeacherListResponse
+	for _, user := range users {
+		response := models.TeacherListResponse{
+			ID:         user.ID,
+			Username:   user.Username,
+			RealName:   "",
+			Email:      user.Email,
+			Phone:      "",
+			Department: "",
+			Bio:        "",
+		}
+
+		if user.Profile != nil {
+			response.RealName = user.Profile.RealName
+			response.Phone = user.Profile.Phone
+			response.Department = user.Profile.Department
+			response.Bio = user.Profile.Bio
+		}
+
+		responses = append(responses, response)
+	}
+
+	return responses, total, nil
+}
+
+// ForceUpdateProjectStatus 管理员强制更新项目状�?
+func (s *ProjectService) ForceUpdateProjectStatus(projectID uint, status string, reason string, operatorID uint) error {
+	// 检查项目是否存�?
+	var project models.Project
+	if err := s.db.First(&project, projectID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return errors.New("项目不存�?)
+		}
+		return err
+	}
+
+	// 开始事�?
+	tx := s.db.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	// 更新项目状�?
+	updates := map[string]interface{}{
+		"status":              status,
+		"force_status_reason": reason,
+		"updated_at":          time.Now(),
+	}
+	if err := tx.Model(&project).Updates(updates).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	// 创建审核记录
+	review := models.ProjectReview{
+		ProjectID:  projectID,
+		ReviewerID: operatorID,
+		Status:     status,
+		Comments:   "管理员强制操�? " + reason,
+		IsForce:    true,
+	}
+	if err := tx.Create(&review).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	// 提交事务
+	if err := tx.Commit().Error; err != nil {
+		return err
+	}
+
+	log.Printf("管理�?%d 强制更新项目 %d 状态为 %s，原�? %s", operatorID, projectID, status, reason)
+	return nil
+}
+
+// SoftDeleteProject 软删除项�?
+func (s *ProjectService) SoftDeleteProject(projectID uint, operatorID uint) error {
+	// 检查项目是否存�?
+	var project models.Project
+	if err := s.db.First(&project, projectID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return errors.New("项目不存�?)
+		}
+		return err
+	}
+
+	// 检查操作权限（只有项目创建者或管理员可以软删除�?
+	if project.CreatedBy != operatorID {
+		// 检查是否为管理�?
+		var user models.User
+		if err := s.db.Preload("Roles").First(&user, operatorID).Error; err != nil {
+			return errors.New("用户不存�?)
+		}
+
+		isAdmin := false
+		for _, role := range user.Roles {
+			if role.RoleKey == "admin" {
+				isAdmin = true
+				break
+			}
+		}
+
+		if !isAdmin {
+			return errors.New("只有项目创建者或管理员可以删除项�?)
+		}
+	}
+
+	// 软删除项�?
+	updates := map[string]interface{}{
+		"deleted":    true,
+		"updated_at": time.Now(),
+	}
+	if err := s.db.Model(&project).Updates(updates).Error; err != nil {
+		return err
+	}
+
+	log.Printf("用户 %d 软删除项�?%d", operatorID, projectID)
+	return nil
+}
+
+// RestoreProject 恢复软删除的项目
+func (s *ProjectService) RestoreProject(projectID uint, operatorID uint) error {
+	// 检查项目是否存在且已被软删�?
+	var project models.Project
+	if err := s.db.Unscoped().First(&project, projectID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return errors.New("项目不存�?)
+		}
+		return err
+	}
+
+	if !project.Deleted {
+		return errors.New("项目未被删除")
+	}
+
+	// 检查操作权限（只有管理员可以恢复）
+	var user models.User
+	if err := s.db.Preload("Roles").First(&user, operatorID).Error; err != nil {
+		return errors.New("用户不存�?)
+	}
+
+	isAdmin := false
+	for _, role := range user.Roles {
+		if role.RoleKey == "admin" {
+			isAdmin = true
+			break
+		}
+	}
+
+	if !isAdmin {
+		return errors.New("只有管理员可以恢复项�?)
+	}
+
+	// 恢复项目
+	updates := map[string]interface{}{
+		"deleted":    false,
+		"updated_at": time.Now(),
+	}
+	if err := s.db.Model(&project).Updates(updates).Error; err != nil {
+		return err
+	}
+
+	log.Printf("管理�?%d 恢复项目 %d", operatorID, projectID)
+	return nil
+}
+
+// GetProjectTypes 获取项目分类列表
+func (s *ProjectService) GetProjectTypes() ([]models.ProjectType, error) {
+	var projectTypes []models.ProjectType
+	if err := s.db.Find(&projectTypes).Error; err != nil {
+		return nil, err
+	}
+	return projectTypes, nil
+}
+
+// GetProjectsByCategory 根据分类获取项目列表
+func (s *ProjectService) GetProjectsByCategory(categoryID uint, params models.ProjectQueryParams) ([]models.ProjectListResponse, int64, error) {
+	var projects []models.Project
+	var total int64
+
+	// 构建查询
+	query := s.db.Model(&models.Project{}).
+		Where("category_id = ? AND deleted = false", categoryID).
+		Preload("Student.Profile").
+		Preload("Teacher.Profile").
+		Preload("Category").
+		Preload("Members").
+		Preload("Files").
+		Preload("Reviews")
+
+	// 搜索条件
+	if params.Search != "" {
+		search := "%" + params.Search + "%"
+		query = query.Where("projects.title LIKE ? OR projects.description LIKE ?", search, search)
+	}
+
+	// 类型筛�?
+	if params.Type != "" {
+		query = query.Where("projects.type = ?", params.Type)
+	}
+
+	// 状态筛�?
+	if params.Status != "" {
+		query = query.Where("projects.status = ?", params.Status)
+	}
+
+	// 获取总数
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	// 排序
+	if params.SortBy != "" {
+		order := params.SortBy
+		if params.SortOrder == "desc" {
+			order += " DESC"
+		}
+		query = query.Order(order)
+	} else {
+		query = query.Order("projects.created_at DESC")
+	}
+
+	// 分页
+	if params.Page > 0 && params.Size > 0 {
+		offset := (params.Page - 1) * params.Size
+		query = query.Offset(offset).Limit(params.Size)
+	}
+
+	// 执行查询
+	if err := query.Find(&projects).Error; err != nil {
+		return nil, 0, err
+	}
+
+	// 转换为响应格�?
+	var responses []models.ProjectListResponse
+	for _, project := range projects {
+		response := models.ProjectListResponse{
+			ID:          project.ID,
+			Title:       project.Title,
+			Description: project.Description,
+			Type:        project.Type,
+			Status:      project.Status,
+			TeacherID:   project.TeacherID,
+			SubmittedAt: project.SubmittedAt,
+			CreatedAt:   project.CreatedAt,
+			UpdatedAt:   project.UpdatedAt,
+			MemberCount: len(project.Members),
+			FileCount:   len(project.Files),
+			ReviewCount: len(project.Reviews),
+		}
+
+		// 添加学生和教师信�?
+		if project.Student != nil && project.Student.Profile != nil {
+			response.StudentName = project.Student.Profile.RealName
+			response.StudentID = project.Student.Profile.StudentID
+		}
+		if project.Teacher != nil && project.Teacher.Profile != nil {
+			response.TeacherName = project.Teacher.Profile.RealName
+		}
+
+		responses = append(responses, response)
+	}
+
+	return responses, total, nil
+}
