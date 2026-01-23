@@ -1,55 +1,5 @@
 <template>
   <div class="teacher-project-overview">
-    <!-- 搜索和筛选区域 -->
-    <el-card style="margin-bottom: 20px;">
-      <el-row :gutter="20">
-        <el-col :span="6">
-          <el-input
-            v-model="searchQuery"
-            placeholder="搜索项目名称或学生姓名"
-            clearable
-            @input="handleSearch"
-          >
-            <template #prefix>
-              <el-icon><Search /></el-icon>
-            </template>
-          </el-input>
-        </el-col>
-        <el-col :span="4">
-          <el-select v-model="statusFilter" placeholder="项目状态" clearable @change="handleFilter">
-            <el-option label="全部" :value="''" />
-            <el-option label="进行中" value="进行中" />
-            <el-option label="已完成" value="已完成" />
-            <el-option label="待审核" value="待审核" />
-            <el-option label="已拒绝" value="已拒绝" />
-            <el-option label="已暂停" value="已暂停" />
-          </el-select>
-        </el-col>
-        <el-col :span="4">
-          <el-select v-model="typeFilter" placeholder="项目类型" clearable @change="handleFilter">
-            <el-option label="全部" :value="''" />
-            <el-option label="软件开发" value="软件开发" />
-            <el-option label="科研项目" value="科研项目" />
-            <el-option label="创新项目" value="创新项目" />
-            <el-option label="竞赛项目" value="竞赛项目" />
-          </el-select>
-        </el-col>
-        <el-col :span="4">
-          <el-select v-model="sortBy" placeholder="排序方式" @change="handleSort">
-            <el-option label="创建时间" value="createTime" />
-            <el-option label="项目名称" value="name" />
-            <el-option label="项目进度" value="progress" />
-            <el-option label="截止时间" value="deadline" />
-            <el-option label="学生姓名" value="studentName" />
-          </el-select>
-        </el-col>
-        <el-col :span="6">
-          <el-button type="primary" @click="createNewProject">创建新项目</el-button>
-          <el-button @click="refreshProjects">刷新</el-button>
-        </el-col>
-      </el-row>
-    </el-card>
-
     <!-- 项目统计卡片 -->
     <el-row :gutter="20">
       <el-col :span="6" v-for="stat in projectStats" :key="stat.title">
@@ -71,7 +21,7 @@
     <!-- 项目列表 -->
     <el-card style="margin-top: 20px;">
       <template #header>
-        <span>指导的项目 ({{ filteredProjects.length }})</span>
+        <span>指导的项目</span>
         <div style="float: right;">
           <el-button-group>
             <el-button :type="viewMode === 'table' ? 'primary' : ''" @click="viewMode = 'table'">
@@ -89,38 +39,33 @@
         <el-table :data="filteredProjects" style="width: 100%" v-loading="loading">
           <el-table-column prop="name" label="项目名称" min-width="150">
             <template #default="scope">
-              <el-link type="primary" @click="viewProject(scope.row)">{{ scope.row.name }}</el-link>
+              <el-link type="primary" @click="viewProject(scope.row)">{{ scope.row.title }}</el-link>
             </template>
           </el-table-column>
           <el-table-column prop="studentName" label="学生姓名" width="100" />
           <el-table-column prop="type" label="项目类型" width="120" />
-          <el-table-column prop="status" label="状态" width="100">
+          <el-table-column prop="status" label="项目状态" width="100">
             <template #default="scope">
               <el-tag :type="getStatusType(scope.row.status)">
-                {{ scope.row.status }}
+                {{ getStatusText(scope.row.status) }}
               </el-tag>
             </template>
+            </el-table-column>
+          <el-table-column prop="createdAt" label="创建时间" width="140">
+              <template #default="scope">
+                    <span>{{ formatDateTime(scope.row.createdAt) }}</span>
+              </template>
           </el-table-column>
-          <el-table-column prop="progress" label="进度" width="150">
-            <template #default="scope">
-              <el-progress :percentage="scope.row.progress" :status="getProgressStatus(scope.row.progress)" />
-            </template>
-          </el-table-column>
-          <el-table-column prop="createTime" label="创建时间" width="120" />
-          <el-table-column prop="deadline" label="截止时间" width="120">
-            <template #default="scope">
-              <span :class="getDeadlineClass(scope.row.deadline)">
-                {{ scope.row.deadline }}
-              </span>
-            </template>
+
+          <el-table-column prop="updatedAt" label="更新时间" width="140">
+              <template #default="scope">
+                  <span>{{ formatDateTime(scope.row.updatedAt) }}</span>
+              </template>
           </el-table-column>
           <el-table-column label="操作" width="280" fixed="right">
             <template #default="scope">
-              <el-button size="small" @click="viewProject(scope.row)">查看</el-button>
-              <el-button size="small" type="primary" @click="editProject(scope.row)">编辑</el-button>
-              <el-button size="small" type="success" @click="updateProgress(scope.row)">更新进度</el-button>
+              <el-button size="small" type="success" @click="updateProgress(scope.row)">项目审批</el-button>
               <el-button size="small" type="warning" @click="provideGuidance(scope.row)">指导建议</el-button>
-              <el-button size="small" type="info" @click="viewGuidanceRecords(scope.row)">指导记录</el-button>
             </template>
           </el-table-column>
         </el-table>
@@ -133,9 +78,9 @@
             <el-card class="project-card" :class="getProjectCardClass(project)">
               <template #header>
                 <div class="card-header">
-                  <span class="project-name">{{ project.name }}</span>
+                  <span class="project-name">{{ project.title }}</span>
                   <el-tag :type="getStatusType(project.status)" size="small">
-                    {{ project.status }}
+                    {{ getStatusText(project.status) }}
                   </el-tag>
                 </div>
               </template>
@@ -143,18 +88,11 @@
               <div class="card-content">
                 <p><strong>学生:</strong> {{ project.studentName }}</p>
                 <p><strong>类型:</strong> {{ project.type }}</p>
-                <p><strong>进度:</strong></p>
-                <el-progress :percentage="project.progress" :status="getProgressStatus(project.progress)" />
-                <p><strong>创建时间:</strong> {{ project.createTime }}</p>
-                <p><strong>截止时间:</strong> 
-                  <span :class="getDeadlineClass(project.deadline)">
-                    {{ project.deadline }}
-                  </span>
-                </p>
+                <p><strong>描述:</strong> {{ project.description }}</p>
+                <p><strong>创建时间:</strong> {{formatRelativeTime(project.createdAt) }}</p>
                 
                 <div class="card-actions">
                   <el-button size="small" @click="viewProject(project)">查看</el-button>
-                  <el-button size="small" type="primary" @click="editProject(project)">编辑</el-button>
                   <el-button size="small" type="warning" @click="provideGuidance(project)">指导</el-button>
                 </div>
               </div>
@@ -162,6 +100,7 @@
           </el-col>
         </el-row>
       </div>
+
 
       <!-- 分页 -->
       <div class="pagination-container" v-if="filteredProjects.length > pageSize">
@@ -399,27 +338,68 @@ const projectStats = ref([
     type: 'total'
   },
   {
-    title: '进行中',
+    title: '已驳回',
     value: 0,
-    description: '正在执行',
+    description: '已经驳回的项目',
     icon: Clock,
-    type: 'ongoing'
+    type: 'rejected'  // 对应 isApproved = -1 或 status = 'rejected'
   },
   {
-    title: '已完成',
+    title: '已通过',
     value: 0,
-    description: '成功完成',
+    description: '已经通过的项目',
     icon: Check,
-    type: 'completed'
+    type: 'approved'  // 对应 isApproved = 1
   },
   {
     title: '待审核',
     value: 0,
-    description: '等待审核',
+    description: '等待审核的项目',
     icon: Warning,
-    type: 'pending'
+    type: 'pending'   // 对应 isApproved = 0
   }
 ])
+
+
+
+const formatDateTime = (dateString) => {
+  if (!dateString) return '--'
+  
+  try {
+    const date = new Date(dateString)
+    
+    // 格式：YYYY-MM-DD HH:mm:ss
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
+    const hours = String(date.getHours()).padStart(2, '0')
+    const minutes = String(date.getMinutes()).padStart(2, '0')
+    const seconds = String(date.getSeconds()).padStart(2, '0')
+    
+    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
+  } catch (error) {
+    console.error('日期格式化错误:', error)
+    return dateString
+  }
+}
+
+// 格式化相对时间
+const formatRelativeTime = (dateString) => {
+  if (!dateString) return '--'
+  const date = new Date(dateString)
+  const now = new Date()
+  const diffMs = now - date
+  const diffMins = Math.floor(diffMs / 60000)
+  const diffHours = Math.floor(diffMs / 3600000)
+  const diffDays = Math.floor(diffMs / 86400000)
+  
+  if (diffMins < 60) return `${diffMins}分钟前`
+  if (diffHours < 24) return `${diffHours}小时前`
+  if (diffDays < 30) return `${diffDays}天前`
+  return formatDate(dateString)
+}
+
+
 
 // 计算属性
 const filteredProjects = computed(() => {
@@ -466,14 +446,27 @@ const filteredProjects = computed(() => {
 
 // 获取状态类型
 const getStatusType = (status) => {
-  const statusMap = {
-    '进行中': 'primary',
-    '已完成': 'success',
-    '待审核': 'warning',
-    '已拒绝': 'danger',
-    '已暂停': 'info'
+  const typeMap = {
+    'submitted': 'info',
+    'reviewing': 'warning', 
+    'approved': 'success',
+    'rejected': 'danger',
+    'in_progress': '',
+    'completed': 'success'
   }
-  return statusMap[status] || 'info'
+  return typeMap[status] || 'info'
+}
+
+const getStatusText = (status) => {
+  const textMap = {
+    'submitted': '已提交',
+    'reviewing': '审核中',
+    'approved': '已通过',
+    'rejected': '已拒绝',
+    'in_progress': '进行中',
+    'completed': '已完成'
+  }
+  return textMap[status] || status
 }
 
 // 获取进度状态
@@ -536,7 +529,8 @@ const loadProjects = async () => {
   try {
     const response = await teacherService.getGuidedProjects()
     if (response && response.code === 200) {
-      projectList.value = response.data || []
+      // 数据在 response.data.list 中
+      projectList.value = response.data.list || []  // 改为 response.data.list
       updateStats()
     } else {
       // 使用模拟数据
@@ -624,17 +618,29 @@ const loadMockData = () => {
   updateStats()
 }
 
-// 更新统计数据
 const updateStats = () => {
-  const total = projectList.value.length
-  const ongoing = projectList.value.filter(p => p.status === '进行中').length
-  const completed = projectList.value.filter(p => p.status === '已完成').length
-  const pending = projectList.value.filter(p => p.status === '待审核').length
+  const projects = projectList.value
   
-  projectStats.value[0].value = total
-  projectStats.value[1].value = ongoing
-  projectStats.value[2].value = completed
-  projectStats.value[3].value = pending
+  // 根据实际字段计算
+  const total = projects.length
+  
+  // 已通过：isApproved === 1
+  const approved = projects.filter(p => p.isApproved === 1).length
+  
+  // 已驳回：isApproved === -1 (如果有这个状态)
+  const rejected = projects.filter(p => p.isApproved === -1).length
+  
+  // 待审核：isApproved === 0 或 status === 'submitted'/'reviewing'
+  const pending = projects.filter(p => 
+    p.isApproved === 0 || 
+    ['submitted', 'reviewing'].includes(p.status)
+  ).length
+  
+  // 更新统计卡片
+  projectStats.value[0].value = total     // 总项目数
+  projectStats.value[1].value = rejected  // 已驳回
+  projectStats.value[2].value = approved  // 已通过
+  projectStats.value[3].value = pending   // 待审核
 }
 
 // 查看项目详情

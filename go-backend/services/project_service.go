@@ -2012,7 +2012,7 @@ func (s *ProjectService) GetTeacherProjects(teacherID uint, params models.Teache
 	var projects []models.Project
 	var total int64
 
-	query := s.db.Model(&models.Project{}).Where("teacher_id = ? AND deleted = ?", teacherID, false)
+	query := s.db.Model(&models.Project{}).Where("deleted = ?", false)
 
 	// 应用查询参数
 	if params.Status != "" {
@@ -2064,6 +2064,7 @@ func (s *ProjectService) GetTeacherProjects(teacherID uint, params models.Teache
 			Description: project.Description,
 			Type:        project.Type,
 			Status:      project.Status,
+			IsApproved:  project.IsApproved,
 			StudentName: project.Student.Username,
 			StudentID:   strconv.FormatUint(uint64(project.Student.ID), 10),
 			TeacherName: project.Teacher.Username,

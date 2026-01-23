@@ -155,23 +155,45 @@ const handleLogin = async () => {
       
       ElMessage.success(res.message || '登录成功')
       
-      // 登录成功后自动跳转到对应页面
-      console.log('开始路由跳转，目标角色:', loginForm.role)
+      // ✅ 添加调试信息，查看跳转前状态
+      console.log('登录成功，开始跳转:', {
+        role: loginForm.role,
+        token: res.token,
+        userInfo: res.data
+      })
       
-      // 根据角色跳转到对应页面
-      switch (loginForm.role) {
-        case 'student':
-          await router.push('/student')
-          break
-        case 'teacher':
-          await router.push('/teacher')
-          break
-        case 'admin':
-          await router.push('/admin')
-          break
-        default:
-          await router.push('/dashboard')
-      }
+      // ✅ 等待一小段时间让消息提示显示
+      setTimeout(async () => {
+        try {
+          // 根据角色跳转到对应页面
+          let targetRoute = '/dashboard'
+          switch (loginForm.role) {
+            case 'student':
+              targetRoute = '/student'
+              break
+            case 'teacher':
+              targetRoute = '/teacher'
+              break
+            case 'admin':
+              targetRoute = '/admin'
+              break
+            default:
+              targetRoute = '/dashboard'
+          }
+          
+          console.log('跳转到:', targetRoute)
+          
+          // ✅ 使用 replace 而不是 push，避免历史记录问题
+          await router.replace(targetRoute)
+          
+          // ✅ 强制刷新页面以确保路由生效
+          window.location.reload()
+          
+        } catch (routerError) {
+          console.error('路由跳转失败:', routerError)
+          ElMessage.error('页面跳转失败，请手动刷新页面')
+        }
+      }, 100) // 等待100ms
       
     } else {
       // 登录失败，显示后端返回的错误信息
@@ -179,13 +201,12 @@ const handleLogin = async () => {
     }
   } catch (error) {
     // 网络异常或其他错误
+    console.error('登录异常:', error)
     ElMessage.error('网络异常或服务器无响应，请稍后重试')
   } finally {
     loading.value = false
   }
 }
-
-
 
 // 验证登录状态
 const validateLoginState = () => {

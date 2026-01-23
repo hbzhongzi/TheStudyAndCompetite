@@ -21,6 +21,7 @@ type Project struct {
 	ExtensionCount    int        `gorm:"default:0;column:extension_count" json:"extensionCount"`
 	ForceStatusReason string     `gorm:"type:text;column:force_status_reason" json:"forceStatusReason"`
 	Deleted           bool       `gorm:"default:false;column:deleted" json:"deleted"`
+	IsApproved        int        `gorm:"default:0;column:is_approved" json:"isApproved"`
 	Level             string     `gorm:"size:50;column:level" json:"level"`
 	CategoryID        *uint      `gorm:"column:category_id" json:"categoryId"`
 	CreatedBy         uint       `gorm:"not null;column:created_by" json:"createdBy"`
@@ -166,6 +167,7 @@ type ProjectReviewRequest struct {
 // ProjectListResponse 项目列表响应
 type ProjectListResponse struct {
 	ID          uint       `json:"id"`
+	IsApproved  int        `json:"isApproved"`
 	Title       string     `json:"title"`
 	Description string     `json:"description"`
 	Type        string     `json:"type"`

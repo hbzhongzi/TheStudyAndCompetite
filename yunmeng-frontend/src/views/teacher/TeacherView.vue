@@ -35,10 +35,6 @@
               <el-icon><House /></el-icon>
               <span>首页概览</span>
             </el-menu-item>
-            <el-menu-item index="projects">
-              <el-icon><Document /></el-icon>
-              <span>我的项目</span>
-            </el-menu-item>
             <el-sub-menu index="project-management">
               <template #title>
                 <el-icon><Operation /></el-icon>
@@ -46,9 +42,7 @@
               </template>
               <el-menu-item index="project-overview">项目概览</el-menu-item>
               <el-menu-item index="project-review">项目审核</el-menu-item>
-              <el-menu-item index="project-milestones">里程碑管理</el-menu-item>
               <el-menu-item index="project-files">文件审核</el-menu-item>
-              <el-menu-item index="project-extensions">延期审核</el-menu-item>
               <el-menu-item index="review-tasks">审核任务</el-menu-item>
             </el-sub-menu>
             <el-menu-item index="students">
@@ -78,10 +72,6 @@
         <el-main class="main-content">
           <div class="content-header">
             <h3>{{ pageTitle }}</h3>
-            <!-- 添加调试信息 -->
-            <p style="color: #999; font-size: 12px; margin: 5px 0 0 0;">
-              当前菜单: {{ activeMenu }} | 页面标题: {{ pageTitle }}
-            </p>
           </div>
           
           <div class="content-body">
@@ -191,39 +181,27 @@
             
             <!-- 项目管理子界面 -->
             <div v-else-if="activeMenu === 'project-overview'" class="welcome-content">
-              <div style="background: #e8f4fd; padding: 10px; margin-bottom: 10px; border-radius: 4px;">
-                <p><strong>调试信息:</strong> 显示项目概览组件 (activeMenu: {{ activeMenu }})</p>
-              </div>
+
               <TeacherProjectOverview />
             </div>
             <div v-else-if="activeMenu === 'project-review'" class="welcome-content">
-              <div style="background: #e8f4fd; padding: 10px; margin-bottom: 10px; border-radius: 4px;">
-                <p><strong>调试信息:</strong> 显示项目审核组件 (activeMenu: {{ activeMenu }})</p>
-              </div>
+
               <TeacherProjectReview />
             </div>
             <div v-else-if="activeMenu === 'project-milestones'" class="welcome-content">
-              <div style="background: #e8f4fd; padding: 10px; margin-bottom: 10px; border-radius: 4px;">
-                <p><strong>调试信息:</strong> 显示里程碑管理组件 (activeMenu: {{ activeMenu }})</p>
-              </div>
+
               <TeacherProjectMilestones />
             </div>
             <div v-else-if="activeMenu === 'project-files'" class="welcome-content">
-              <div style="background: #e8f4fd; padding: 10px; margin-bottom: 10px; border-radius: 4px;">
-                <p><strong>调试信息:</strong> 显示文件审核组件 (activeMenu: {{ activeMenu }})</p>
-              </div>
+
               <TeacherProjectFiles />
             </div>
             <div v-else-if="activeMenu === 'project-extensions'" class="welcome-content">
-              <div style="background: #e8f4fd; padding: 10px; margin-bottom: 10px; border-radius: 4px;">
-                <p><strong>调试信息:</strong> 显示延期审核组件 (activeMenu: {{ activeMenu }})</p>
-              </div>
+
               <TeacherProjectExtensions />
             </div>
             <div v-else-if="activeMenu === 'review-tasks'" class="welcome-content">
-              <div style="background: #e8f4fd; padding: 10px; margin-bottom: 10px; border-radius: 4px;">
-                <p><strong>调试信息:</strong> 显示审核任务组件 (activeMenu: {{ activeMenu }})</p>
-              </div>
+    
               <TeacherReviewTasks />
             </div>
             
@@ -255,33 +233,6 @@
               <h2>欢迎使用教师端管理系统</h2>
               <p>请从左侧菜单选择要使用的功能</p>
               
-              <!-- 添加测试信息 -->
-              <el-card style="margin-top: 20px; background: #f8f9fa;">
-                <template #header>
-                  <span>调试信息</span>
-                </template>
-                <div>
-                  <p><strong>当前选中的菜单:</strong> {{ activeMenu }}</p>
-                  <p><strong>页面标题:</strong> {{ pageTitle }}</p>
-                  <p><strong>可用菜单项:</strong></p>
-                  <ul>
-                    <li>dashboard - 首页概览</li>
-                    <li>projects - 项目管理</li>
-                    <li>project-overview - 项目概览</li>
-                    <li>project-review - 项目审核</li>
-                    <li>project-milestones - 里程碑管理</li>
-                    <li>project-files - 文件审核</li>
-                    <li>project-extensions - 延期审核</li>
-                    <li>review-tasks - 审核任务</li>
-                    <li>students - 学生管理</li>
-                    <li>competition-guidance - 竞赛指导</li>
-                    <li>competition-judging - 作品评审</li>
-                    <li>applications - 申请审核</li>
-                    <li>reports - 统计报告</li>
-                    <li>profile - 个人信息</li>
-                  </ul>
-                </div>
-              </el-card>
             </div>
           </div>
         </el-main>
@@ -316,7 +267,6 @@ import TeacherProjectMilestones from './TeacherProjectMilestones.vue'
 import TeacherProjectFiles from './TeacherProjectFiles.vue'
 import TeacherProjectExtensions from './TeacherProjectExtensions.vue'
 import TeacherReviewTasks from './TeacherReviewTasks.vue'
-import ErrorBoundary from '../../components/ErrorBoundary.vue'
 
 const router = useRouter()
 const activeMenu = ref('dashboard')
@@ -327,9 +277,7 @@ const pageTitle = computed(() => {
     projects: '项目管理',
     'project-overview': '项目概览',
     'project-review': '项目审核',
-    'project-milestones': '里程碑管理',
     'project-files': '文件审核',
-    'project-extensions': '延期审核',
     'review-tasks': '审核任务',
     students: '学生管理',
     competitions: '竞赛指导',
@@ -364,25 +312,28 @@ const pendingApplications = ref([
 
 const handleMenuSelect = async (index) => {
   try {
-    console.log('菜单选择:', index) // 添加调试日志
+    console.log('菜单选择:', index)
     activeMenu.value = index
     
-    // 等待DOM更新完成
+    // 使用更安全的 nextTick
     await nextTick()
     
-    // 验证组件是否正确加载
-    console.log('当前活动菜单:', activeMenu.value)
-    
-    // 强制触发响应式更新
-    if (index.startsWith('project-') || index === 'review-tasks') {
-      console.log('项目管理子菜单选中:', index)
-    }
+    // 等待 DOM 完全渲染
+    setTimeout(() => {
+      // 在这里执行需要 DOM 的操作
+      console.log('当前活动菜单:', activeMenu.value)
+      
+      // 如果有特定操作需要 DOM，添加检查
+      const element = document.querySelector('.your-element')
+      if (element && element.nextSibling) {
+        // 安全地操作
+      }
+    }, 100) // 等待 100ms 确保 DOM 更新完成
   } catch (error) {
     console.error('菜单切换错误:', error)
     ElMessage.error('页面切换失败，请重试')
   }
 }
-
 const handleCommand = async (command) => {
   if (command === 'logout') {
     try {

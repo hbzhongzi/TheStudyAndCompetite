@@ -7,163 +7,118 @@
           <el-button type="primary" @click="refreshReviews">刷新</el-button>
         </div>
       </template>
-
-      <!-- 审核统计 -->
-      <el-row :gutter="20" class="review-stats">
-        <el-col :span="6" v-for="stat in reviewStats" :key="stat.label">
-          <el-card class="stat-card" :class="stat.type">
-            <div class="stat-content">
-              <div class="stat-icon">
-                <el-icon><component :is="stat.icon" /></el-icon>
-              </div>
-              <div class="stat-info">
-                <h4>{{ stat.label }}</h4>
-                <p class="stat-number">{{ stat.value }}</p>
-                <p class="stat-desc">{{ stat.description }}</p>
-              </div>
-            </div>
-          </el-card>
-        </el-col>
-      </el-row>
-
-      <!-- 筛选和搜索 -->
-      <el-card style="margin: 20px 0;">
-        <el-row :gutter="20">
-          <el-col :span="6">
-            <el-input
-              v-model="searchQuery"
-              placeholder="搜索项目名称或学生姓名"
-              clearable
-              @input="handleSearch"
-            >
-              <template #prefix>
-                <el-icon><Search /></el-icon>
-              </template>
-            </el-input>
-          </el-col>
-          <el-col :span="4">
-            <el-select v-model="statusFilter" placeholder="审核状态" clearable @change="handleFilter">
-              <el-option label="全部状态" :value="''" />
-              <el-option label="待审核" value="pending" />
-              <el-option label="已通过" value="approved" />
-              <el-option label="已拒绝" value="rejected" />
-              <el-option label="需修改" value="need_revision" />
-            </el-select>
-          </el-col>
-          <el-col :span="4">
-            <el-select v-model="priorityFilter" placeholder="优先级" clearable @change="handleFilter">
-              <el-option label="全部优先级" :value="''" />
-              <el-option label="低" value="low" />
-              <el-option label="中" value="medium" />
-              <el-option label="高" value="high" />
-              <el-option label="紧急" value="urgent" />
-            </el-select>
-          </el-col>
-          <el-col :span="4">
-            <el-select v-model="sortBy" placeholder="排序方式" @change="handleSort">
-              <el-option label="提交时间" value="submitTime" />
-              <el-option label="优先级" value="priority" />
-              <el-option label="项目名称" value="name" />
-              <el-option label="学生姓名" value="studentName" />
-            </el-select>
-          </el-col>
-          <el-col :span="6">
-            <el-button-group>
-              <el-button @click="batchApprove" :disabled="selectedReviews.length === 0" type="success">
-                批量通过
-              </el-button>
-              <el-button @click="batchReject" :disabled="selectedReviews.length === 0" type="danger">
-                批量拒绝
-              </el-button>
-            </el-button-group>
-          </el-col>
-        </el-row>
-      </el-card>
-
-      <!-- 审核列表 -->
-      <el-card>
-        <template #header>
-          <span>审核列表 ({{ filteredReviews.length }})</span>
-        </template>
-        
-        <el-table :data="filteredReviews" @selection-change="handleSelectionChange" v-loading="loading">
-          <el-table-column type="selection" width="55" />
-          <el-table-column prop="name" label="项目名称" min-width="150">
-            <template #default="scope">
-              <el-link type="primary" @click="viewProject(scope.row)">{{ scope.row.name }}</el-link>
-            </template>
-          </el-table-column>
-          <el-table-column prop="studentName" label="学生姓名" width="100" />
-          <el-table-column prop="type" label="项目类型" width="120" />
-          <el-table-column prop="priority" label="优先级" width="100">
-            <template #default="scope">
-              <el-tag :type="getPriorityType(scope.row.priority)" size="small">
-                {{ getPriorityLabel(scope.row.priority) }}
-              </el-tag>
-            </template>
-          </el-table-column>
-          <el-table-column prop="status" label="审核状态" width="100">
-            <template #default="scope">
-              <el-tag :type="getStatusType(scope.row.status)" size="small">
-                {{ getStatusLabel(scope.row.status) }}
-              </el-tag>
-            </template>
-          </el-table-column>
-          <el-table-column prop="submitTime" label="提交时间" width="150" />
-          <el-table-column prop="deadline" label="截止时间" width="120">
-            <template #default="scope">
-              <span :class="getDeadlineClass(scope.row.deadline)">
-                {{ scope.row.deadline }}
-              </span>
-            </template>
-          </el-table-column>
-          <el-table-column label="操作" width="250" fixed="right">
-            <template #default="scope">
-              <el-button size="small" @click="viewProject(scope.row)">查看</el-button>
-              <el-button 
-                v-if="scope.row.status === 'pending'"
-                size="small" 
-                type="success" 
-                @click="approveProject(scope.row)"
-              >
-                通过
-              </el-button>
-              <el-button 
-                v-if="scope.row.status === 'pending'"
-                size="small" 
-                type="danger" 
-                @click="rejectProject(scope.row)"
-              >
-                拒绝
-              </el-button>
-              <el-button 
-                v-if="scope.row.status === 'pending'"
-                size="small" 
-                type="warning" 
-                @click="requestRevision(scope.row)"
-              >
-                需要修改
-              </el-button>
-              <el-button size="small" type="info" @click="viewReviewHistory(scope.row)">
-                审核历史
-              </el-button>
-            </template>
-          </el-table-column>
-        </el-table>
-
-        <!-- 分页 -->
-        <div class="pagination-container" v-if="filteredReviews.length > pageSize">
-          <el-pagination
-            v-model:current-page="currentPage"
-            v-model:page-size="pageSize"
-            :page-sizes="[10, 20, 50]"
-            :total="filteredReviews.length"
-            layout="total, sizes, prev, pager, next, jumper"
-            @size-change="handleSizeChange"
-            @current-change="handleCurrentChange"
-          />
+<!-- 审核统计 -->
+<el-row :gutter="20" class="review-stats">
+  <el-col :span="6" v-for="stat in reviewStats" :key="stat.type">
+    <el-card class="stat-card">
+      <div class="stat-content">
+        <div class="stat-icon">
+          <el-icon :color="stat.color">
+            <component :is="stat.icon" />
+          </el-icon>
         </div>
-      </el-card>
+        <div class="stat-info">
+          <h4 class="stat-title">{{ stat.title }}</h4>
+          <p class="stat-number">{{ stat.value }}</p>
+          <p class="stat-desc">{{ stat.description }}</p>
+        </div>
+      </div>
+    </el-card>
+  </el-col>
+</el-row>
+     <!-- 审核列表 -->
+<el-card>
+  <template #header>
+    <span>审核列表 ({{ filteredReviews.length }})</span>
+    <div style="float: right">
+      <el-select
+        v-model="statusFilter"
+        placeholder="按状态筛选"
+        clearable
+        style="width: 120px; margin-right: 10px"
+      >
+        <el-option label="全部" value="" />
+        <el-option label="草稿" value="draft" />
+        <el-option label="审核中" value="reviewing" />
+        <el-option label="已驳回" value="rejected" />
+        <el-option label="已通过" value="approved" />
+      </el-select>
+      <el-button type="primary" @click="refreshReviews">刷新</el-button>
+    </div>
+  </template>
+  
+  <el-table :data="paginatedReviews" @selection-change="handleSelectionChange" v-loading="loading">
+    <el-table-column type="selection" width="55" />
+    
+    <el-table-column label="项目名称" min-width="200">
+      <template #default="scope">
+        <el-link type="primary" @click="viewProject(scope.row)">{{ scope.row.title }}</el-link>
+      </template>
+    </el-table-column>
+    
+    <el-table-column label="学生信息" width="150">
+      <template #default="scope">
+        <div>
+          <div>{{ scope.row.student.name }}</div>
+          <div style="font-size: 12px; color: #999;">学号: {{ scope.row.student.studentId }}</div>
+        </div>
+      </template>
+    </el-table-column>
+    
+    <el-table-column prop="type" label="项目类型" width="120" />
+    
+    <el-table-column label="审核状态" width="100">
+      <template #default="scope">
+        <el-tag :type="getStatusType(scope.row.status)" size="small">
+          {{ getStatusLabel(scope.row.status) }}
+        </el-tag>
+      </template>
+    </el-table-column>
+    
+    <el-table-column label="操作" width="280" fixed="right">
+      <template #default="scope">
+        <el-button size="small" @click="viewProject(scope.row)">查看</el-button>
+        <el-button 
+          v-if="scope.row.status === 'reviewing'"
+          size="small" 
+          type="success" 
+          @click="approveProject(scope.row)"
+        >
+          通过
+        </el-button>
+        <el-button 
+          v-if="scope.row.status === 'reviewing'"
+          size="small" 
+          type="danger" 
+          @click="rejectProject(scope.row)"
+        >
+          拒绝
+        </el-button>
+        <el-button 
+          v-if="scope.row.status === 'draft'"
+          size="small" 
+          type="warning" 
+          @click="remindSubmit(scope.row)"
+        >
+          提醒提交
+        </el-button>
+      </template>
+    </el-table-column>
+  </el-table>
+
+  <!-- 分页 -->
+  <div class="pagination-container" v-if="filteredReviews.length > pageSize">
+    <el-pagination
+      v-model:current-page="currentPage"
+      v-model:page-size="pageSize"
+      :page-sizes="[10, 20, 50]"
+      :total="filteredReviews.length"
+      layout="total, sizes, prev, pager, next, jumper"
+      @size-change="handleSizeChange"
+      @current-change="handleCurrentChange"
+    />
+  </div>
+</el-card>
     </el-card>
 
     <!-- 项目详情对话框 -->
@@ -367,18 +322,205 @@ import { teacherService } from '../../services/teacherService'
 
 // 响应式数据
 const loading = ref(false)
-const reviewList = ref([])
 const projectDetailVisible = ref(false)
 const reviewDialogVisible = ref(false)
 const historyDialogVisible = ref(false)
 const currentProject = ref(null)
 const selectedReviews = ref([])
 const searchQuery = ref('')
-const statusFilter = ref('')
 const priorityFilter = ref('')
 const sortBy = ref('submitTime')
-const currentPage = ref(1)
 const pageSize = ref(10)
+
+// 响应式数据
+const reviewList = ref([])  // 原始数据
+const statusFilter = ref('')
+const currentPage = ref(1)
+const selectedRows = ref([])
+
+// 状态统计数据
+const reviewStats = ref([
+  { title: '待审核', value: 0, type: 'pending', color: '#E6A23C' },
+  { title: '已通过', value: 0, type: 'approved', color: '#67C23A' },
+  { title: '已驳回', value: 0, type: 'rejected', color: '#F56C6C' },
+  { title: '待修改', value: 0, type: 'revision', color: '#409EFF' }
+])
+
+// 加载审核列表
+const loadReviews = async () => {
+  loading.value = true
+  try {
+    const response = await teacherService.getTeacherProjects()
+    console.log('API响应:', response) // 调试
+    
+    if (response && response.code === 200) {
+      // ✅ 根据实际数据结构：数据在 response.data.list 中
+      const apiData = response.data
+      if (apiData && apiData.list) {
+        reviewList.value = apiData.list || []
+        console.log('设置 reviewList:', reviewList.value) // 调试
+      } else if (Array.isArray(apiData)) {
+        // 兼容处理：如果直接返回数组
+        reviewList.value = apiData
+      } else {
+        console.warn('API返回数据格式不正确:', apiData)
+        reviewList.value = []
+      }
+      
+      updateStats()
+    } else {
+      console.error('API返回失败:', response?.message)
+      reviewList.value = []
+    }
+  } catch (error) {
+    console.error('加载审核列表失败:', error)
+    reviewList.value = []
+  } finally {
+    loading.value = false
+  }
+}
+
+// 更新统计数据
+const updateStats = () => {
+  const projects = reviewList.value
+  
+  // 重置计数器
+  const counts = {
+    pending: 0,
+    approved: 0,
+    rejected: 0,
+    revision: 0,
+    draft: 0,
+    reviewing: 0
+  }
+  
+  projects.forEach(project => {
+    const status = project.status
+    if (status in counts) {
+      counts[status]++
+    }
+  })
+  
+  // 映射关系：reviewing -> pending
+  reviewStats.value[0].value = counts.reviewing || counts.pending
+  reviewStats.value[1].value = counts.approved
+  reviewStats.value[2].value = counts.rejected
+  reviewStats.value[3].value = counts.revision
+  
+  console.log('统计结果:', counts) // 调试
+}
+
+// 状态类型映射
+const getStatusType = (status) => {
+  const typeMap = {
+    'draft': 'info',      // 草稿
+    'reviewing': 'warning', // 审核中（对应之前的 pending）
+    'pending': 'warning',   // 待审核（兼容）
+    'rejected': 'danger',   // 已驳回
+    'approved': 'success',  // 已通过
+    'revision': ''          // 待修改
+  }
+  return typeMap[status] || 'info'
+}
+
+// 状态标签映射
+const getStatusLabel = (status) => {
+  const labelMap = {
+    'draft': '草稿',
+    'reviewing': '审核中',
+    'pending': '待审核',
+    'rejected': '已驳回',
+    'approved': '已通过',
+    'revision': '待修改'
+  }
+  return labelMap[status] || status
+}
+
+// 筛选后的项目列表
+const filteredReviews = computed(() => {
+  let filtered = reviewList.value
+  
+  // 状态筛选
+  if (statusFilter.value) {
+    filtered = filtered.filter(item => item.status === statusFilter.value)
+  }
+  
+  return filtered
+})
+
+// 分页后的数据
+const paginatedReviews = computed(() => {
+  const start = (currentPage.value - 1) * pageSize.value
+  const end = start + pageSize.value
+  return filteredReviews.value.slice(start, end)
+})
+
+// 分页处理
+const handleSizeChange = (newSize) => {
+  pageSize.value = newSize
+  currentPage.value = 1
+}
+
+const handleCurrentChange = (newPage) => {
+  currentPage.value = newPage
+}
+
+// 表格选择处理
+const handleSelectionChange = (selection) => {
+  selectedRows.value = selection
+}
+
+// 项目操作函数
+const viewProject = (project) => {
+  console.log('查看项目:', project)
+  // 跳转到详情页或打开弹窗
+}
+
+const approveProject = async (project) => {
+  console.log('通过项目:', project.id)
+  try {
+    // 调用审核通过接口
+    const response = await teacherService.approveProject(project.id)
+    if (response && response.code === 200) {
+      // 更新本地数据状态
+      project.status = 'approved'
+      updateStats()
+    }
+  } catch (error) {
+    console.error('通过审核失败:', error)
+  }
+}
+
+const rejectProject = async (project) => {
+  console.log('拒绝项目:', project.id)
+  try {
+    // 调用拒绝接口
+    const response = await teacherService.rejectProject(project.id)
+    if (response && response.code === 200) {
+      // 更新本地数据状态
+      project.status = 'rejected'
+      updateStats()
+    }
+  } catch (error) {
+    console.error('拒绝审核失败:', error)
+  }
+}
+
+const remindSubmit = async (project) => {
+  console.log('提醒提交:', project.id)
+  // 调用提醒提交接口
+}
+
+const refreshReviews = () => {
+  loadReviews()
+}
+
+// 组件挂载时加载数据
+onMounted(() => {
+  loadReviews()
+})
+
+
 
 const reviewForm = ref({
   result: '',
@@ -393,80 +535,6 @@ const reviewRules = {
   comments: [{ required: true, message: '请输入审核意见', trigger: 'blur' }]
 }
 
-const reviewFormRef = ref()
-
-// 审核统计
-const reviewStats = ref([
-  {
-    title: '待审核',
-    value: 0,
-    description: '等待审核',
-    icon: Clock,
-    type: 'pending'
-  },
-  {
-    title: '已通过',
-    value: 0,
-    description: '审核通过',
-    icon: Check,
-    type: 'approved'
-  },
-  {
-    title: '已拒绝',
-    value: 0,
-    description: '审核拒绝',
-    icon: Warning,
-    type: 'rejected'
-  },
-  {
-    title: '需要修改',
-    value: 0,
-    description: '要求修改',
-    icon: Document,
-    type: 'revision'
-  }
-])
-
-// 计算属性
-const filteredReviews = computed(() => {
-  let filtered = reviewList.value
-
-  // 搜索过滤
-  if (searchQuery.value) {
-    filtered = filtered.filter(review => 
-      review.name.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-      review.studentName.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-      review.description.toLowerCase().includes(searchQuery.value.toLowerCase())
-    )
-  }
-
-  // 状态过滤
-  if (statusFilter.value) {
-    filtered = filtered.filter(review => review.status === statusFilter.value)
-  }
-
-  // 优先级过滤
-  if (priorityFilter.value) {
-    filtered = filtered.filter(review => review.priority === priorityFilter.value)
-  }
-
-  // 排序
-  filtered.sort((a, b) => {
-    switch (sortBy.value) {
-      case 'name':
-        return a.name.localeCompare(b.name)
-      case 'priority':
-        return getPriorityWeight(b.priority) - getPriorityWeight(a.priority)
-      case 'studentName':
-        return a.studentName.localeCompare(b.studentName)
-      case 'submitTime':
-      default:
-        return new Date(b.submitTime) - new Date(a.submitTime)
-    }
-  })
-
-  return filtered
-})
 
 // 获取优先级权重
 const getPriorityWeight = (priority) => {
@@ -494,27 +562,7 @@ const getPriorityLabel = (priority) => {
   return labelMap[priority] || '未知'
 }
 
-// 获取状态类型
-const getStatusType = (status) => {
-  const typeMap = {
-    pending: 'warning',
-    approved: 'success',
-    rejected: 'danger',
-    revision: 'info'
-  }
-  return typeMap[status] || 'info'
-}
 
-// 获取状态标签
-const getStatusLabel = (status) => {
-  const labelMap = {
-    pending: '待审核',
-    approved: '已通过',
-    rejected: '已拒绝',
-    revision: '需要修改'
-  }
-  return labelMap[status] || '未知'
-}
 
 // 获取截止时间样式
 const getDeadlineClass = (deadline) => {
@@ -563,41 +611,7 @@ const handleSort = () => {
   currentPage.value = 1
 }
 
-// 分页处理
-const handleSizeChange = (val) => {
-  pageSize.value = val
-  currentPage.value = 1
-}
 
-const handleCurrentChange = (val) => {
-  currentPage.value = val
-}
-
-// 选择变化处理
-const handleSelectionChange = (selection) => {
-  selectedReviews.value = selection
-}
-
-// 加载审核列表
-const loadReviews = async () => {
-  loading.value = true
-  try {
-    const response = await teacherService.getProjectReviews()
-    if (response && response.code === 200) {
-      reviewList.value = response.data || []
-      updateStats()
-    } else {
-      // 使用模拟数据
-      loadMockData()
-    }
-  } catch (error) {
-    console.error('加载审核列表失败:', error)
-    // API调用失败时，使用模拟数据
-    loadMockData()
-  } finally {
-    loading.value = false
-  }
-}
 
 // 加载模拟数据
 const loadMockData = () => {
@@ -697,66 +711,8 @@ const loadMockData = () => {
   updateStats()
 }
 
-// 更新统计数据
-const updateStats = () => {
-  const pending = reviewList.value.filter(r => r.status === 'pending').length
-  const approved = reviewList.value.filter(r => r.status === 'approved').length
-  const rejected = reviewList.value.filter(r => r.status === 'rejected').length
-  const revision = reviewList.value.filter(r => r.status === 'revision').length
-  
-  reviewStats.value[0].value = pending
-  reviewStats.value[1].value = approved
-  reviewStats.value[2].value = rejected
-  reviewStats.value[3].value = revision
-}
 
-// 查看项目详情
-const viewProject = (project) => {
-  currentProject.value = project
-  projectDetailVisible.value = true
-}
 
-// 通过项目
-const approveProject = (project) => {
-  currentProject.value = project
-  reviewForm.value = {
-    result: 'approved',
-    comments: '',
-    suggestions: '',
-    revisionDeadline: '',
-    score: 8
-  }
-  reviewDialogTitle.value = '审核通过'
-  reviewDialogVisible.value = true
-}
-
-// 拒绝项目
-const rejectProject = (project) => {
-  currentProject.value = project
-  reviewForm.value = {
-    result: 'rejected',
-    comments: '',
-    suggestions: '',
-    revisionDeadline: '',
-    score: 0
-  }
-  reviewDialogTitle.value = '审核拒绝'
-  reviewDialogVisible.value = true
-}
-
-// 要求修改
-const requestRevision = (project) => {
-  currentProject.value = project
-  reviewForm.value = {
-    result: 'revision',
-    comments: '',
-    suggestions: '',
-    revisionDeadline: '',
-    score: 0
-  }
-  reviewDialogTitle.value = '要求修改'
-  reviewDialogVisible.value = true
-}
 
 // 查看审核历史
 const viewReviewHistory = (project) => {
@@ -858,11 +814,6 @@ const batchReject = async () => {
   }
 }
 
-// 刷新审核列表
-const refreshReviews = () => {
-  loadReviews()
-  ElMessage.success('审核列表已刷新')
-}
 
 // 组件挂载时加载数据
 onMounted(() => {

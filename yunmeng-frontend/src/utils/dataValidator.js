@@ -9,10 +9,137 @@
  * @param {Array} defaultData - 默认数据
  * @returns {Array} 验证后的项目数组
  */
+
+// 新增：ensureArray 函数
+/**
+ * 确保值是数组
+ * @param {any} value - 输入值
+ * @returns {Array} - 确保是数组的值
+ */
+export function ensureArray(value) {
+  if (Array.isArray(value)) {
+    return value
+  }
+  if (value === null || value === undefined) {
+    return []
+  }
+  // 如果是类数组对象或有迭代器的对象
+  if (value && typeof value === 'object' && Symbol.iterator in value) {
+    return Array.from(value)
+  }
+  // 其他情况返回数组包装
+  return [value]
+}
+
+
+/**
+ * 安全的选择变化处理函数
+ * @param {any} value - 新的值
+ * @param {any} oldValue - 旧的值
+ * @param {Function} callback - 回调函数
+ * @param {Object} options - 配置选项
+ * @returns {boolean} - 是否执行回调
+ */
+export function safeSelectionChange(value, oldValue, callback, options = {}) {
+  const {
+    validate = true,
+    debounce = false,
+    debounceTime = 300,
+    ignoreEmpty = false,
+    compareDeep = false
+  } = options
+  
+  try {
+    // 1. 验证参数
+    if (typeof callback !== 'function') {
+      console.warn('safeSelectionChange: callback 必须是函数')
+      return false
+    }
+    
+    // 2. 处理忽略空值的情况
+    if (ignoreEmpty) {
+      const isEmpty = (val) => 
+        val === null || 
+        val === undefined || 
+        val === '' || 
+        (Array.isArray(val) && val.length === 0) ||
+        (typeof val === 'object' && Object.keys(val).length === 0)
+      
+      if (isEmpty(value) && isEmpty(oldValue)) {
+        return false
+      }
+    }
+    
+    // 3. 检查值是否真的发生了变化
+    let hasChanged = false
+    
+    if (compareDeep) {
+      // 深度比较（简单实现）
+      const stringify = (obj) => {
+        try {
+          return JSON.stringify(obj)
+        } catch {
+          return String(obj)
+        }
+      }
+      hasChanged = stringify(value) !== stringify(oldValue)
+    } else {
+      // 浅比较
+      hasChanged = value !== oldValue
+    }
+    
+    if (!hasChanged) {
+      return false
+    }
+    
+    // 4. 验证新值（如果需要）
+    if (validate) {
+      if (value === null || value === undefined) {
+        console.warn('safeSelectionChange: 值不能为 null 或 undefined')
+        return false
+      }
+      
+      // 可以添加更多的验证逻辑
+      if (options.required && !value) {
+        console.warn('safeSelectionChange: 值是必需的')
+        return false
+      }
+    }
+    
+    // 5. 执行回调
+    if (debounce) {
+      // 简单的防抖实现
+      if (callback.timeoutId) {
+        clearTimeout(callback.timeoutId)
+      }
+      callback.timeoutId = setTimeout(() => {
+        callback(value, oldValue)
+      }, debounceTime)
+      return true
+    } else {
+      callback(value, oldValue)
+      return true
+    }
+    
+  } catch (error) {
+    console.error('safeSelectionChange 执行出错:', error)
+    return false
+  }
+}
+
+/**
+ * 验证并过滤项目列表数据
+ * @param {any} data - API返回的数据
+ * @param {Array} defaultData - 默认数据
+ * @returns {Array} 验证后的项目数组
+ */
 export function validateProjectList(data, defaultData = []) {
   try {
+    // 使用 ensureArray 确保数据是数组
+    const dataArray = ensureArray(data)
+    
     // 如果数据不是数组，返回默认数据
-    if (!Array.isArray(data)) {
+    if (!Array.isArray(dataArray)) {
       console.warn('数据不是数组格式:', data)
       return defaultData
     }

@@ -26,10 +26,10 @@ type DatabaseConfig struct {
 // NewDatabaseConfig 创建数据库配置
 func NewDatabaseConfig() *DatabaseConfig {
 	return &DatabaseConfig{
-		Host:     getEnv("DB_HOST", "localhost"),
+		Host:     getEnv("DB_HOST", "127.0.0.1"),
 		Port:     getEnv("DB_PORT", "3306"),
 		Username: getEnv("DB_USERNAME", "root"),
-		Password: getEnv("DB_PASSWORD", "123456"),
+		Password: getEnv("DB_PASSWORD", "root"),
 		Database: getEnv("DB_DATABASE", "cloud_dream_system"),
 		Charset:  getEnv("DB_CHARSET", "utf8mb4"),
 	}

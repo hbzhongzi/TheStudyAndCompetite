@@ -52,6 +52,32 @@ class TeacherService {
     }
   }
 
+
+  async getTeacherProjects(params = {}) {
+    try {
+      // 调用新接口
+      const response = await api.get('/teacher-projects', { params })
+      
+      if (response && response.code === 200) {
+        return response
+      }
+      
+      // 如果接口响应格式不同，可能需要适配
+      return {
+        code: response?.code || 500,
+        data: response?.data || { list: [], page: 1, size: 20, total: 0 },
+        message: response?.message || '获取失败'
+      }
+    } catch (error) {
+      console.error('获取教师项目列表失败:', error)
+      return {
+        code: 500,
+        data: { list: [], page: 1, size: 20, total: 0 },
+        message: '请求失败: ' + error.message
+      }
+    }
+  }
+
   // 获取项目详情
   async getProjectDetail(projectId) {
     try {
@@ -154,21 +180,31 @@ class TeacherService {
   // 获取指导的项目列表
   async getGuidedProjects() {
     try {
-      const response = await api.get('/teachers/projects')
-      // 确保返回的数据结构正确
-      if (response && response.code === 200) {
-        // 如果response.data不是数组，返回空数组
-        if (!Array.isArray(response.data)) {
-          console.warn('API返回的projects数据不是数组:', response.data)
-          return {
-            code: 200,
-            data: [],
-            message: '获取项目列表成功'
-          }
-        }
+       const response = await api.get('/teachers/projects')
+    
+    if (response && response.code === 200) {
+      const responseData = response.data
+      
+      // ✅ 修复：检查 response.data 是否是数组，或者包含 list 数组
+      if (Array.isArray(responseData)) {
+        // 直接返回数组格式
         return response
+      } else if (responseData && responseData.list && Array.isArray(responseData.list)) {
+        // 返回分页格式，不发出警告
+        return response
+      } else {
+        // 格式不正确，发出警告
+        console.warn('API返回的projects数据格式不正确:', responseData)
+        return {
+          code: 200,
+          data: { list: [], page: 1, size: 20, total: 0 },
+          message: '数据格式不正确，返回空列表'
+                }
       }
-      return response
+    }
+    
+    return response
+    
     } catch (error) {
       console.error('获取指导项目列表失败:', error)
       // 返回模拟数据作为备选
