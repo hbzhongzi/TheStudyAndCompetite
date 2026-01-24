@@ -121,7 +121,7 @@ class TeacherService {
   // 获取学生列表
   async getStudents(params = {}) {
     try {
-      const response = await api.get('/students', { params })
+      const response = await api.get('/teachers/students', { params })
       return response
     } catch (error) {
       throw new Error(error.response?.data?.message || '获取学生列表失败')

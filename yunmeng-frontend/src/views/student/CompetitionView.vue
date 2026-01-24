@@ -438,7 +438,7 @@ import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search, Refresh, Calendar, Clock, User, Download, OfficeBuilding, Location, Check, Lock } from '@element-plus/icons-vue'
 import { formatDate, formatDateRange, isExpired, formatRemainingTime } from '@/utils/dateUtils'
-import { parsePaginatedResponse } from '@/utils/dataValidator'
+
 import competitionService from '@/services/competitionService'
 
 // 响应式数据

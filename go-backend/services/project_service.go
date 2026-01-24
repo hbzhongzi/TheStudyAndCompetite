@@ -2246,7 +2246,7 @@ func (s *ProjectService) GetMyStudents(teacherID uint, params models.StudentQuer
 	var students []models.User
 	var total int64
 
-	query := s.db.Model(&models.User{}).Where("role = 'student' AND deleted = ?", false)
+	query := s.db.Model(&models.User{}).Where("role_name = ?", "student")
 
 	// 应用查询参数
 	if params.Status != "" {
@@ -2293,6 +2293,7 @@ func (s *ProjectService) GetMyStudents(teacherID uint, params models.StudentQuer
 			ID:        student.ID,
 			Name:      student.Username,
 			Email:     student.Email,
+			Major:     student.Major,
 			Grade:     student.Grade,
 			Status:    student.Status,
 			CreatedAt: student.CreatedAt,

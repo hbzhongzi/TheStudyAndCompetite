@@ -22,7 +22,7 @@ type User struct {
 	UpdateTime time.Time `gorm:"column:update_time;autoUpdateTime" json:"updateTime"`
 	CreatedAt  time.Time `gorm:"column:created_at;autoCreateTime" json:"createdAt"`
 	UpdatedAt  time.Time `gorm:"column:updated_at;autoUpdateTime" json:"updatedAt"`
-
+	RoleName   string    `gorm:"not null;size:50;column:role_name" json:"roleName"`
 	// 关联关系
 	Profile   *UserProfile `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE" json:"profile,omitempty"`
 	Roles     []Role       `gorm:"many2many:user_roles;" json:"roles,omitempty"`

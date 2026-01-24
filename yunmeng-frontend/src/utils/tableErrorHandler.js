@@ -187,6 +187,28 @@ export function safeProperty(obj, prop, defaultValue = null) {
   return obj[prop] !== undefined ? obj[prop] : defaultValue
 }
 
+
+/**
+ * 兼容性导出 - 修复 createSafeTableComputed 不存在的问题
+ */
+export const createSafeTableComputed = (data, defaultValue = []) => {
+  try {
+    if (data === null || data === undefined) {
+      return defaultValue
+    }
+    if (Array.isArray(data)) {
+      return data
+    }
+    if (typeof data === 'object' && data.list && Array.isArray(data.list)) {
+      return data.list
+    }
+    console.warn('createSafeTableComputed: 数据格式不正确，返回默认值', data)
+    return defaultValue
+  } catch (error) {
+    console.error('createSafeTableComputed 错误:', error)
+    return defaultValue
+  }
+}
 /**
  * 深度验证对象
  * @param {Object} obj - 要验证的对象
@@ -215,3 +237,4 @@ export function validateObject(obj, schema) {
   }
   return result
 } 
+

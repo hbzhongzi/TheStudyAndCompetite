@@ -580,13 +580,6 @@ import {
 } from '@element-plus/icons-vue'
 import { competitionService } from '../../services/competitionService'
 import { formatDate, formatDateRange, isExpired, formatRemainingTime } from '@/utils/dateUtils'
-import { ensureArray, parsePaginatedResponse } from '@/utils/dataValidator'
-import { 
-  createSafeTableData, 
-  createSafeTableComputed, 
-  handleTableSelectionChange,
-  monitorTableData 
-} from '@/utils/tableErrorHandler'
 
 // 响应式数据
 const activeTab = ref('registrations')
