@@ -95,9 +95,6 @@ func (s *ProjectService) GetProjectList(params models.ProjectQueryParams) ([]mod
 			SubmittedAt: project.SubmittedAt,
 			CreatedAt:   project.CreatedAt,
 			UpdatedAt:   project.UpdatedAt,
-			MemberCount: len(project.Members),
-			FileCount:   len(project.Files),
-			ReviewCount: len(project.Reviews),
 		}
 
 		// 添加学生信息
@@ -168,64 +165,6 @@ func (s *ProjectService) GetProjectByID(id uint) (*models.ProjectDetailResponse,
 		response.Teacher.Department = project.Teacher.Profile.Department
 	}
 
-	// 添加成员信息
-	for _, member := range project.Members {
-		response.Members = append(response.Members, struct {
-			ID            uint   `json:"id"`
-			Name          string `json:"name"`
-			StudentNumber string `json:"studentNumber"`
-			Role          string `json:"role"`
-		}{
-			ID:            member.ID,
-			Name:          member.Name,
-			StudentNumber: member.StudentNumber,
-			Role:          member.Role,
-		})
-	}
-
-	// 添加文件信息
-	for _, file := range project.Files {
-		response.Files = append(response.Files, struct {
-			ID         uint      `json:"id"`
-			FileName   string    `json:"fileName"`
-			FileURL    string    `json:"fileUrl"`
-			UploadTime time.Time `json:"uploadTime"`
-		}{
-			ID:         file.ID,
-			FileName:   file.FileName,
-			FileURL:    file.FileURL,
-			UploadTime: file.UploadTime,
-		})
-	}
-
-	// 添加审核信息
-	for _, review := range project.Reviews {
-		reviewInfo := struct {
-			ID         uint      `json:"id"`
-			Status     string    `json:"status"`
-			Comments   string    `json:"comments"`
-			ReviewTime time.Time `json:"reviewTime"`
-			Reviewer   struct {
-				ID       uint   `json:"id"`
-				Username string `json:"username"`
-				RealName string `json:"realName"`
-			} `json:"reviewer"`
-		}{
-			ID:         review.ID,
-			Status:     review.Status,
-			Comments:   review.Comments,
-			ReviewTime: review.ReviewTime,
-		}
-
-		if review.Reviewer != nil && review.Reviewer.Profile != nil {
-			reviewInfo.Reviewer.ID = review.Reviewer.ID
-			reviewInfo.Reviewer.Username = review.Reviewer.Username
-			reviewInfo.Reviewer.RealName = review.Reviewer.Profile.RealName
-		}
-
-		response.Reviews = append(response.Reviews, reviewInfo)
-	}
-
 	log.Printf("项目详情查询完成 - 项目ID: %d, 标题: %s", id, project.Title)
 	return response, nil
 }
@@ -241,50 +180,23 @@ func (s *ProjectService) CreateProject(studentID uint, req models.ProjectCreateR
 	}()
 
 	// 创建项目
-	project := models.Project{
+	project := &models.Project{
 		Title:       req.Title,
 		Description: req.Description,
 		Type:        req.Type,
-		Status:      req.Status,
 		StudentID:   studentID,
 		TeacherID:   req.TeacherID,
+		Plan:        req.Plan,
+		Status:      "draft",
+		Progress:    0,
+		Deleted:     false,
+		IsApproved:  false,
 	}
 
 	if err := tx.Create(&project).Error; err != nil {
 		tx.Rollback()
 		log.Printf("创建项目失败: %v", err)
 		return nil, errors.New("创建项目失败")
-	}
-
-	// 创建项目成员
-	for _, memberReq := range req.Members {
-		member := models.ProjectMember{
-			ProjectID:     project.ID,
-			Name:          memberReq.Name,
-			StudentNumber: memberReq.StudentNumber,
-			Role:          memberReq.Role,
-		}
-
-		if err := tx.Create(&member).Error; err != nil {
-			tx.Rollback()
-			log.Printf("创建项目成员失败: %v", err)
-			return nil, errors.New("创建项目成员失败")
-		}
-	}
-
-	// 创建项目附件
-	for _, fileReq := range req.Attachments {
-		file := models.ProjectFile{
-			ProjectID: project.ID,
-			FileName:  fileReq.FileName,
-			FileURL:   fileReq.FileURL,
-		}
-
-		if err := tx.Create(&file).Error; err != nil {
-			tx.Rollback()
-			log.Printf("创建项目附件失败: %v", err)
-			return nil, errors.New("创建项目附件失败")
-		}
 	}
 
 	// 提交事务
@@ -349,32 +261,6 @@ func (s *ProjectService) UpdateProject(id uint, studentID uint, req models.Proje
 			tx.Rollback()
 			log.Printf("更新项目失败: %v", err)
 			return errors.New("更新项目失败")
-		}
-	}
-
-	// 更新项目成员
-	if req.Members != nil {
-		// 删除现有成员
-		if err := tx.Where("project_id = ?", id).Delete(&models.ProjectMember{}).Error; err != nil {
-			tx.Rollback()
-			log.Printf("删除项目成员失败: %v", err)
-			return errors.New("更新项目成员失败")
-		}
-
-		// 创建新成员
-		for _, memberReq := range req.Members {
-			member := models.ProjectMember{
-				ProjectID:     id,
-				Name:          memberReq.Name,
-				StudentNumber: memberReq.StudentNumber,
-				Role:          memberReq.Role,
-			}
-
-			if err := tx.Create(&member).Error; err != nil {
-				tx.Rollback()
-				log.Printf("创建项目成员失败: %v", err)
-				return errors.New("更新项目成员失败")
-			}
 		}
 	}
 
@@ -504,98 +390,8 @@ func (s *ProjectService) ReviewProject(projectID uint, reviewerID uint, req mode
 	return nil
 }
 
-// GetProjectStats 获取项目统计信息
-func (s *ProjectService) GetProjectStats() (*models.ProjectStats, error) {
-	var stats models.ProjectStats
-
-	// 基础统计
-	if err := s.db.Model(&models.Project{}).Count(&stats.TotalProjects).Error; err != nil {
-		return nil, err
-	}
-
-	if err := s.db.Model(&models.Project{}).Where("status = ?", "draft").Count(&stats.DraftProjects).Error; err != nil {
-		return nil, err
-	}
-
-	if err := s.db.Model(&models.Project{}).Where("status = ?", "pending").Count(&stats.PendingProjects).Error; err != nil {
-		return nil, err
-	}
-
-	if err := s.db.Model(&models.Project{}).Where("status = ?", "approved").Count(&stats.ApprovedProjects).Error; err != nil {
-		return nil, err
-	}
-
-	if err := s.db.Model(&models.Project{}).Where("status = ?", "rejected").Count(&stats.RejectedProjects).Error; err != nil {
-		return nil, err
-	}
-
-	if err := s.db.Model(&models.Project{}).Where("type = ?", "科研").Count(&stats.ResearchProjects).Error; err != nil {
-		return nil, err
-	}
-
-	if err := s.db.Model(&models.Project{}).Where("type = ?", "竞赛").Count(&stats.CompetitionProjects).Error; err != nil {
-		return nil, err
-	}
-
-	// 类型统计
-	stats.TypeStats = make(map[string]int64)
-	var typeResults []struct {
-		Type  string `json:"type"`
-		Count int64  `json:"count"`
-	}
-	if err := s.db.Model(&models.Project{}).
-		Select("type, count(*) as count").
-		Group("type").
-		Find(&typeResults).Error; err != nil {
-		return nil, err
-	}
-
-	for _, result := range typeResults {
-		stats.TypeStats[result.Type] = result.Count
-	}
-
-	// 状态统�?
-	stats.StatusStats = make(map[string]int64)
-	var statusResults []struct {
-		Status string `json:"status"`
-		Count  int64  `json:"count"`
-	}
-	if err := s.db.Model(&models.Project{}).
-		Select("status, count(*) as count").
-		Group("status").
-		Find(&statusResults).Error; err != nil {
-		return nil, err
-	}
-
-	for _, result := range statusResults {
-		stats.StatusStats[result.Status] = result.Count
-	}
-
-	// 月度统计（最�?2个月�?
-	stats.MonthlyStats = make(map[string]int64)
-	now := time.Now()
-	for i := 0; i < 12; i++ {
-		month := now.AddDate(0, -i, 0)
-		monthKey := month.Format("2006-01")
-
-		var count int64
-		startOfMonth := time.Date(month.Year(), month.Month(), 1, 0, 0, 0, 0, month.Location())
-		endOfMonth := startOfMonth.AddDate(0, 1, 0).Add(-time.Second)
-
-		if err := s.db.Model(&models.Project{}).
-			Where("created_at BETWEEN ? AND ?", startOfMonth, endOfMonth).
-			Count(&count).Error; err != nil {
-			return nil, err
-		}
-
-		stats.MonthlyStats[monthKey] = count
-	}
-
-	return &stats, nil
-}
-
 // GetMyProjects 获取我的项目列表
-func (s *ProjectService) GetMyProjects(studentID uint, status string) ([]models.ProjectMyListResponse, error) {
+func (s *ProjectService) GetMyProjects(studentID uint, status string, page, size int) ([]models.ProjectMyListResponse, int64, error) {
 	var projects []models.Project
 	query := s.db.Where("student_id = ?", studentID)
 
@@ -603,24 +399,84 @@ func (s *ProjectService) GetMyProjects(studentID uint, status string) ([]models.
 		query = query.Where("status = ?", status)
 	}
 
-	err := query.Order("created_at DESC").Find(&projects).Error
+	// 获取总数
+	var total int64
+	query.Model(&models.Project{}).Count(&total)
+
+	// 分页查询
+	offset := (page - 1) * size
+	err := query.Offset(offset).Limit(size).Order("created_at DESC").Find(&projects).Error
 	if err != nil {
 		log.Printf("获取我的项目列表失败: %v", err)
-		return nil, err
+		return nil, 0, err
 	}
 
 	var responses []models.ProjectMyListResponse
 	for _, project := range projects {
 		responses = append(responses, models.ProjectMyListResponse{
-			ID:        project.ID,
-			Title:     project.Title,
-			Type:      project.Type,
-			Status:    project.Status,
-			CreatedAt: project.CreatedAt,
+			ID:          project.ID,
+			Title:       project.Title,
+			Type:        project.Type,
+			Status:      project.Status,
+			CreatedAt:   project.CreatedAt,
+			Deadline:    project.UpdatedAt,
+			Description: project.Description,
+			Progress:    project.Progress,
+			Plan:        project.Plan,
 		})
 	}
 
-	return responses, nil
+	return responses, total, nil
+}
+
+// ProjectStats 项目统计返回结构
+type ProjectStats struct {
+	TotalProjects      int64 `json:"totalProjects"`
+	OngoingProjects    int64 `json:"ongoingProjects"`
+	CompletedProjects  int64 `json:"completedProjects"`
+	PendingProjects    int64 `json:"pendingProjects"`
+	TotalCompetitions  int64 `json:"totalCompetitions"`
+	ActiveCompetitions int64 `json:"activeCompetitions"`
+}
+
+// GetProjectStats 获取学生项目与竞赛统计信息
+func (s *ProjectService) GetProjectStats(userID uint) (*ProjectStats, error) {
+	stats := &ProjectStats{}
+
+	// 项目总数
+	if err := s.db.
+		Table("projects").
+		Where("student_id = ?", userID).
+		Count(&stats.TotalProjects).Error; err != nil {
+		return nil, err
+	}
+
+	// 进行中项目
+	s.db.Table("projects").
+		Where("student_id = ? AND status = ?", userID, "ongoing").
+		Count(&stats.OngoingProjects)
+
+	// 已完成项目
+	s.db.Table("projects").
+		Where("student_id = ? AND status = ?", userID, "completed").
+		Count(&stats.CompletedProjects)
+
+	// 待审核项目
+	s.db.Table("projects").
+		Where("student_id = ? AND status = ?", userID, "pending").
+		Count(&stats.PendingProjects)
+
+	// 竞赛总数
+	s.db.Table("competitions").
+		Where("student_id = ?", userID).
+		Count(&stats.TotalCompetitions)
+
+	// 活跃竞赛
+	s.db.Table("competitions").
+		Where("student_id = ? AND status = ?", userID, "active").
+		Count(&stats.ActiveCompetitions)
+
+	return stats, nil
 }
 
 // GetProjectsForTeacher 获取教师查看的项目列�?
@@ -1214,149 +1070,6 @@ func (s *ProjectService) GetProjectMilestones(projectID uint) ([]models.ProjectM
 	}
 
 	return responses, nil
-}
-
-// ApplyProjectExtension 申请项目延期
-func (s *ProjectService) ApplyProjectExtension(projectID uint, userID uint, req models.ProjectExtensionRequest) (*models.ProjectExtensionResponse, error) {
-	// 检查项目是否存在
-	var project models.Project
-	if err := s.db.First(&project, projectID).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, errors.New("项目不存在")
-		}
-		return nil, err
-	}
-
-	// 检查权限：只有项目创建者可以申请延期
-	if project.StudentID != userID {
-		return nil, errors.New("无权限申请项目延期")
-	}
-
-	// 检查项目状态：只有进行中的项目可以申请延期
-	if project.Status != "in_progress" {
-		return nil, errors.New("只有进行中的项目可以申请项目延期")
-	}
-
-	// 检查项目是否有预期结束时间
-	if project.ExpectedEndDate == nil {
-		return nil, errors.New("项目没有设置预期结束时间，无法申请延期")
-	}
-
-	// 创建延期申请
-	extension := models.ProjectExtension{
-		ProjectID:        projectID,
-		ApplicantID:      userID,
-		Reason:           req.Reason,
-		OriginalEndDate:  *project.ExpectedEndDate,
-		RequestedEndDate: req.RequestedEndDate,
-		Status:           "pending",
-	}
-
-	if err := s.db.Create(&extension).Error; err != nil {
-		log.Printf("创建项目延期申请失败: %v", err)
-		return nil, errors.New("创建项目延期申请失败")
-	}
-
-	// 转换为响应格式
-	response := &models.ProjectExtensionResponse{
-		ID:               extension.ID,
-		ProjectID:        extension.ProjectID,
-		ApplicantID:      extension.ApplicantID,
-		Reason:           extension.Reason,
-		OriginalEndDate:  extension.OriginalEndDate,
-		RequestedEndDate: extension.RequestedEndDate,
-		Status:           extension.Status,
-		ReviewerID:       extension.ReviewerID,
-		ReviewComments:   extension.ReviewComments,
-		ReviewedAt:       extension.ReviewedAt,
-		CreatedAt:        extension.CreatedAt,
-	}
-
-	log.Printf("项目延期申请创建成功 - 项目ID: %d, 申请ID: %d", projectID, extension.ID)
-	return response, nil
-}
-
-// ReviewProjectExtension 审核项目延期申请
-func (s *ProjectService) ReviewProjectExtension(extensionID uint, userID uint, req models.ProjectExtensionReviewRequest) error {
-	// 检查延期申请是否存在
-	var extension models.ProjectExtension
-	if err := s.db.First(&extension, extensionID).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return errors.New("延期申请不存在")
-		}
-		return nil
-	}
-
-	// 检查权限：只有指导教师或管理员可以审核延期申请
-	var project models.Project
-	if err := s.db.First(&project, extension.ProjectID).Error; err != nil {
-		return errors.New("项目不存在")
-	}
-
-	if project.TeacherID != userID {
-		// 检查是否为管理员
-		var user models.User
-		if err := s.db.Preload("Roles").First(&user, userID).Error; err != nil {
-			return errors.New("用户不存在")
-		}
-
-		isAdmin := false
-		for _, role := range user.Roles {
-			if role.RoleKey == "admin" {
-				isAdmin = true
-				break
-			}
-		}
-
-		if !isAdmin {
-			return errors.New("无权限审核此延期申请")
-		}
-	}
-
-	// 开始事务
-	tx := s.db.Begin()
-	defer func() {
-		if r := recover(); r != nil {
-			tx.Rollback()
-		}
-	}()
-
-	// 更新延期申请状态
-	updates := map[string]interface{}{
-		"status":          req.Status,
-		"review_comments": req.ReviewComments,
-		"reviewer_id":     userID,
-		"reviewed_at":     time.Now(),
-	}
-
-	if err := tx.Model(&extension).Updates(updates).Error; err != nil {
-		tx.Rollback()
-		log.Printf("更新延期申请状态失败: %v", err)
-		return errors.New("更新延期申请状态失败")
-	}
-
-	// 如果延期申请通过，更新项目结束时间
-	if req.Status == "approved" {
-		if err := tx.Model(&project).Updates(map[string]interface{}{
-			"expected_end_date": extension.RequestedEndDate,
-			"is_extended":       true,
-			"extension_count":   project.ExtensionCount + 1,
-			"updated_at":        time.Now(),
-		}).Error; err != nil {
-			tx.Rollback()
-			log.Printf("更新项目结束时间失败: %v", err)
-			return errors.New("更新项目结束时间失败")
-		}
-	}
-
-	// 提交事务
-	if err := tx.Commit().Error; err != nil {
-		log.Printf("提交事务失败: %v", err)
-		return errors.New("审核延期申请失败")
-	}
-
-	log.Printf("项目延期申请审核完成 - 申请ID: %d, 审核结果: %s", extensionID, req.Status)
-	return nil
 }
 
 // UpdateProjectProgress 更新项目进度
@@ -2051,7 +1764,7 @@ func (s *ProjectService) GetTeacherProjects(teacherID uint, params models.Teache
 	}
 
 	// 执行查询
-	if err := query.Preload("Student").Preload("Teacher").Preload("Category").Find(&projects).Error; err != nil {
+	if err := query.Preload("Student").Preload("Teacher").Find(&projects).Error; err != nil {
 		return nil, 0, err
 	}
 
@@ -2064,7 +1777,6 @@ func (s *ProjectService) GetTeacherProjects(teacherID uint, params models.Teache
 			Description: project.Description,
 			Type:        project.Type,
 			Status:      project.Status,
-			IsApproved:  project.IsApproved,
 			StudentName: project.Student.Username,
 			StudentID:   strconv.FormatUint(uint64(project.Student.ID), 10),
 			TeacherName: project.Teacher.Username,

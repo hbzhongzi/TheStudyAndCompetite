@@ -34,10 +34,12 @@ api.interceptors.response.use(
       localStorage.removeItem('userInfo')
       localStorage.removeItem('userRole')
       console.log('登录已过期，请重新登录')
+      // 不再自动跳转到登录页面，让用户手动访问
     }
     return Promise.reject(error)
   }
 )
+
 
 /**
  * 学生服务
@@ -49,49 +51,15 @@ export const studentService = {
    */
   async getMyProjects(params = {}) {
     try {
-      const response = await api.get('/student/projects', { params })
+
+      // 使用 api 而不是 request
+      const response = await api.get('/projects/my', { params })
+      
+      console.log('✅ 请求成功，响应:', response)
       return response
-    } catch (error) {
+    } catch (error)  {
       console.error('获取我的项目列表失败:', error)
-      // 返回模拟数据作为后备
-      return {
-        code: 200,
-        data: [
-          {
-            id: 1,
-            name: '智能校园系统',
-            type: '软件开发',
-            status: '进行中',
-            progress: 75,
-            createTime: '2024-01-15',
-            deadline: '2024-07-15',
-            description: '基于物联网技术的智能校园管理系统',
-            plan: '预计6个月完成，分为需求分析、设计、开发、测试四个阶段'
-          },
-          {
-            id: 2,
-            name: '数据分析平台',
-            type: '科研项目',
-            status: '待审核',
-            progress: 90,
-            createTime: '2024-01-14',
-            deadline: '2024-06-14',
-            description: '大数据分析平台，支持多种数据源和算法',
-            plan: '预计8个月完成，包括数据采集、预处理、分析、可视化等模块'
-          },
-          {
-            id: 3,
-            name: '在线教育平台',
-            type: '创新项目',
-            status: '已完成',
-            progress: 100,
-            createTime: '2024-01-10',
-            deadline: '2024-05-10',
-            description: '基于Web的在线教育学习平台',
-            plan: '预计4个月完成，包括用户管理、课程管理、学习跟踪等模块'
-          }
-        ]
-      }
+      throw error
     }
   },
 
@@ -100,7 +68,7 @@ export const studentService = {
    */
   async getProjectStats() {
     try {
-      const response = await api.get('/student/projects/stats')
+      const response = await api.get('/projects/status')
       return response
     } catch (error) {
       console.error('获取项目统计数据失败:', error)
@@ -197,18 +165,6 @@ export const studentService = {
     }
   },
 
-  /**
-   * 申请项目延期
-   */
-  async requestExtension(projectId, extensionData) {
-    try {
-      const response = await api.post(`/student/projects/${projectId}/extension`, extensionData)
-      return response
-    } catch (error) {
-      console.error('申请延期失败:', error)
-      throw error
-    }
-  },
 
   /**
    * 获取项目附件列表
@@ -253,109 +209,6 @@ export const studentService = {
     }
   },
 
-  /**
-   * 获取项目成员列表
-   */
-  async getProjectMembers(projectId) {
-    try {
-      const response = await api.get(`/student/projects/${projectId}/members`)
-      return response
-    } catch (error) {
-      console.error('获取项目成员失败:', error)
-      throw error
-    }
-  },
-
-  /**
-   * 邀请项目成员
-   */
-  async inviteProjectMember(projectId, memberData) {
-    try {
-      const response = await api.post(`/student/projects/${projectId}/members`, memberData)
-      return response
-    } catch (error) {
-      console.error('邀请成员失败:', error)
-      throw error
-    }
-  },
-
-  /**
-   * 移除项目成员
-   */
-  async removeProjectMember(projectId, memberId) {
-    try {
-      const response = await api.delete(`/student/projects/${projectId}/members/${memberId}`)
-      return response
-    } catch (error) {
-      console.error('移除成员失败:', error)
-      throw error
-    }
-  },
-
-  /**
-   * 获取项目审核记录
-   */
-  async getProjectReviews(projectId) {
-    try {
-      const response = await api.get(`/student/projects/${projectId}/reviews`)
-      return response
-    } catch (error) {
-      console.error('获取审核记录失败:', error)
-      throw error
-    }
-  },
-
-  /**
-   * 获取项目时间线
-   */
-  async getProjectTimeline(projectId) {
-    try {
-      const response = await api.get(`/student/projects/${projectId}/timeline`)
-      return response
-    } catch (error) {
-      console.error('获取项目时间线失败:', error)
-      throw error
-    }
-  },
-
-  /**
-   * 获取项目模板列表
-   */
-  async getProjectTemplates() {
-    try {
-      const response = await api.get('/student/project-templates')
-      return response
-    } catch (error) {
-      console.error('获取项目模板失败:', error)
-      throw error
-    }
-  },
-
-  /**
-   * 获取项目模板详情
-   */
-  async getProjectTemplate(templateId) {
-    try {
-      const response = await api.get(`/student/project-templates/${templateId}`)
-      return response
-    } catch (error) {
-      console.error('获取项目模板详情失败:', error)
-      throw error
-    }
-  },
-
-  /**
-   * 从模板创建项目
-   */
-  async createProjectFromTemplate(templateId, projectData) {
-    try {
-      const response = await api.post(`/student/project-templates/${templateId}/create`, projectData)
-      return response
-    } catch (error) {
-      console.error('从模板创建项目失败:', error)
-      throw error
-    }
-  },
 
   /**
    * 导出我的项目
@@ -386,70 +239,7 @@ export const studentService = {
     }
   },
 
-  /**
-   * 获取项目建议
-   */
-  async getProjectSuggestions() {
-    try {
-      const response = await api.get('/student/projects/suggestions')
-      return response
-    } catch (error) {
-      console.error('获取项目建议失败:', error)
-      throw error
-    }
-  },
 
-  /**
-   * 获取项目通知
-   */
-  async getProjectNotifications(params = {}) {
-    try {
-      const response = await api.get('/student/projects/notifications', { params })
-      return response
-    } catch (error) {
-      console.error('获取项目通知失败:', error)
-      throw error
-    }
-  },
-
-  /**
-   * 标记通知为已读
-   */
-  async markNotificationRead(notificationId) {
-    try {
-      const response = await api.put(`/student/notifications/${notificationId}/read`)
-      return response
-    } catch (error) {
-      console.error('标记通知已读失败:', error)
-      throw error
-    }
-  },
-
-  /**
-   * 获取项目协作记录
-   */
-  async getProjectCollaboration(projectId) {
-    try {
-      const response = await api.get(`/student/projects/${projectId}/collaboration`)
-      return response
-    } catch (error) {
-      console.error('获取协作记录失败:', error)
-      throw error
-    }
-  },
-
-  /**
-   * 添加协作记录
-   */
-  async addCollaborationRecord(projectId, recordData) {
-    try {
-      const response = await api.post(`/student/projects/${projectId}/collaboration`, recordData)
-      return response
-    } catch (error) {
-      console.error('添加协作记录失败:', error)
-      throw error
-    }
-  }
 }
 
 export default studentService 

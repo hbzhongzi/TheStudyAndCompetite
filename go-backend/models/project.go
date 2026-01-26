@@ -4,41 +4,37 @@ import (
 	"time"
 )
 
-// Project 项目表
+// Project 项目表（严格映射 projects 表）
 type Project struct {
-	ID                uint       `gorm:"primaryKey;autoIncrement;column:id" json:"id"`
-	Title             string     `gorm:"not null;size:100" json:"title"`
-	Description       string     `gorm:"type:text" json:"description"`
-	Type              string     `gorm:"type:enum('科研','竞赛');default:'科研'" json:"type"`
-	Status            string     `gorm:"type:enum('draft','submitted','approved','rejected','archived','in_progress','completed','suspended','need_revision');default:'draft'" json:"status"`
-	StudentID         uint       `gorm:"not null;column:student_id" json:"studentId"`
-	TeacherID         uint       `gorm:"not null;column:teacher_id" json:"teacherId"`
-	SubmittedAt       *time.Time `gorm:"column:submitted_at" json:"submittedAt"`
-	ExpectedEndDate   *time.Time `gorm:"column:expected_end_date" json:"expectedEndDate"`
-	ActualEndDate     *time.Time `gorm:"column:actual_end_date" json:"actualEndDate"`
-	Progress          int        `gorm:"default:0" json:"progress"`
-	IsExtended        bool       `gorm:"default:false;column:is_extended" json:"isExtended"`
-	ExtensionCount    int        `gorm:"default:0;column:extension_count" json:"extensionCount"`
-	ForceStatusReason string     `gorm:"type:text;column:force_status_reason" json:"forceStatusReason"`
-	Deleted           bool       `gorm:"default:false;column:deleted" json:"deleted"`
-	IsApproved        int        `gorm:"default:0;column:is_approved" json:"isApproved"`
-	Level             string     `gorm:"size:50;column:level" json:"level"`
-	CategoryID        *uint      `gorm:"column:category_id" json:"categoryId"`
-	CreatedBy         uint       `gorm:"not null;column:created_by" json:"createdBy"`
-	CreatedAt         time.Time  `gorm:"column:created_at;autoCreateTime" json:"createdAt"`
-	UpdatedAt         time.Time  `gorm:"column:updated_at;autoUpdateTime" json:"updatedAt"`
+	ID          uint   `gorm:"column:id;primaryKey;autoIncrement" json:"id"`
+	Title       string `gorm:"column:title;type:varchar(255);not null" json:"title"`
+	Description string `gorm:"column:description;varchar(255)" json:"description"`
+	Type        string `gorm:"column:type;type:varchar(255)" json:"type"` // 冗余字段，便于展示
+	StudentID   uint   `gorm:"column:student_id;not null" json:"studentId"`
+	TeacherID   uint   `gorm:"column:teacher_id" json:"teacherId,omitempty"`
+
+	Status          string     `gorm:"column:status;type:enum('draft','submitted','reviewing','approved','rejected','completed');default:'draft'" json:"status"`
+	SubmittedAt     *time.Time `gorm:"column:submitted_at" json:"submittedAt"`
+	ApprovedAt      *time.Time `gorm:"column:approved_at" json:"approvedAt"`
+	ApprovedBy      *uint      `gorm:"column:approved_by" json:"approvedBy,omitempty"`
+	RejectionReason string     `gorm:"column:rejection_reason;type:text" json:"rejectionReason"`
+
+	Plan       string     `gorm:"column:plan;type:varchar(255)" json:"plan"`
+	Progress   int        `gorm:"column:progress;default:0" json:"progress"`
+	FinishTime *time.Time `gorm:"column:finish_time" json:"finishTime"`
+
+	Deleted    bool `gorm:"column:deleted;default:0" json:"deleted"`
+	IsApproved bool `gorm:"column:is_approved;default:0" json:"isApproved"`
+
+	CreatedAt time.Time `gorm:"column:created_at;autoCreateTime" json:"createdAt"`
+	UpdatedAt time.Time `gorm:"column:updated_at;autoUpdateTime" json:"updatedAt"`
 
 	// 关联关系
-	Student  *User           `gorm:"foreignKey:StudentID" json:"student,omitempty"`
-	Teacher  *User           `gorm:"foreignKey:TeacherID" json:"teacher,omitempty"`
-	Category *ProjectType    `gorm:"foreignKey:CategoryID" json:"category,omitempty"`
-	Creator  *User           `gorm:"foreignKey:CreatedBy" json:"creator,omitempty"`
-	Members  []ProjectMember `gorm:"foreignKey:ProjectID;constraint:OnDelete:CASCADE" json:"members,omitempty"`
-	Files    []ProjectFile   `gorm:"foreignKey:ProjectID;constraint:OnDelete:CASCADE" json:"files,omitempty"`
-	Reviews  []ProjectReview `gorm:"foreignKey:ProjectID;constraint:OnDelete:CASCADE" json:"reviews,omitempty"`
+	Student *User `gorm:"foreignKey:StudentID" json:"student,omitempty"`
+	Teacher *User `gorm:"foreignKey:TeacherID" json:"teacher,omitempty"`
 }
 
-func (p *Project) TableName() string {
+func (Project) TableName() string {
 	return "projects"
 }
 
@@ -120,22 +116,13 @@ func (st *StudentTeacher) TableName() string {
 
 // ProjectCreateRequest 创建项目请求
 type ProjectCreateRequest struct {
-	Title       string          `json:"title" binding:"required,max=100"`
-	Description string          `json:"description"`
-	Type        string          `json:"type" binding:"required,oneof=科研 竞赛"`
-	Status      string          `json:"status" binding:"required,oneof=draft submitted"`
-	TeacherID   uint            `json:"teacherId" binding:"required"`
-	Level       string          `json:"level" binding:"omitempty,oneof=校级 省级 国家级"`
-	CategoryID  *uint           `json:"categoryId"`
-	Members     []MemberRequest `json:"members"`
-	Attachments []FileRequest   `json:"attachments"`
-}
-
-// MemberRequest 成员请求
-type MemberRequest struct {
-	Name          string `json:"name" binding:"required,max=50"`
-	StudentNumber string `json:"studentNumber" binding:"max=30"`
-	Role          string `json:"role" binding:"max=30"`
+	Title       string `json:"title" binding:"required,max=100"`
+	Description string `json:"description"`
+	Type        string `json:"type" `
+	Status      string `json:"status" `
+	TeacherID   uint   `json:"teacherId" binding:"required"`
+	Plan        string `json:"plan"`
+	FinishedAt  string `json:"finishedAt"`
 }
 
 // FileRequest 文件请求
@@ -146,15 +133,14 @@ type FileRequest struct {
 
 // ProjectUpdateRequest 更新项目请求
 type ProjectUpdateRequest struct {
-	Title       string          `json:"title" binding:"max=100"`
-	Description string          `json:"description"`
-	Type        string          `json:"type" binding:"omitempty,oneof=科研 竞赛"`
-	Status      string          `json:"status" binding:"omitempty,oneof=draft submitted approved rejected archived"`
-	TeacherID   uint            `json:"teacherId" binding:"omitempty"`
-	Level       string          `json:"level" binding:"omitempty,oneof=校级 省级 国家级"`
-	CategoryID  *uint           `json:"categoryId"`
-	Members     []MemberRequest `json:"members"`
-	Files       []FileRequest   `json:"files"`
+	Title       string        `json:"title" binding:"max=100"`
+	Description string        `json:"description"`
+	Type        string        `json:"type" binding:"omitempty,oneof=科研 竞赛"`
+	Status      string        `json:"status" binding:"omitempty,oneof=draft submitted approved rejected archived"`
+	TeacherID   uint          `json:"teacherId" binding:"omitempty"`
+	Level       string        `json:"level" binding:"omitempty,oneof=校级 省级 国家级"`
+	CategoryID  *uint         `json:"categoryId"`
+	Files       []FileRequest `json:"files"`
 }
 
 // ProjectReviewRequest 项目审核请求
@@ -277,11 +263,15 @@ type ProjectCreateResponse struct {
 
 // ProjectMyListResponse 我的项目列表响应
 type ProjectMyListResponse struct {
-	ID        uint      `json:"id"`
-	Title     string    `json:"title"`
-	Type      string    `json:"type"`
-	Status    string    `json:"status"`
-	CreatedAt time.Time `json:"createdAt"`
+	ID          uint      `json:"id"`
+	Title       string    `json:"title"`
+	Plan        string    `json:"plan"`
+	Progress    int       `json:"progress"`
+	Type        string    `json:"type"`
+	Status      string    `json:"status"`
+	Description string    `json:"description"`
+	CreatedAt   time.Time `json:"createdAt"`
+	Deadline    time.Time `json:"updated_at"`
 }
 
 // ProjectListForTeacherResponse 教师查看的项目列表响应

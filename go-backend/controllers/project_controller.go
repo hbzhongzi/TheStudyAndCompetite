@@ -9,9 +9,11 @@ import (
 	"yunmeng-backend/services"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 type ProjectController struct {
+	DB             *gorm.DB
 	projectService *services.ProjectService
 }
 
@@ -93,7 +95,7 @@ func (c *ProjectController) GetProjectByID(ctx *gin.Context) {
 // CreateProject 创建项目
 func (c *ProjectController) CreateProject(ctx *gin.Context) {
 	var req models.ProjectCreateRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
+	if err := ctx.ShouldBind(&req); err != nil {
 		log.Printf("参数绑定失败: %v", err)
 		ctx.JSON(http.StatusBadRequest, gin.H{
 			"code":    400,
@@ -315,97 +317,48 @@ func (c *ProjectController) ForceUpdateProjectStatus(ctx *gin.Context) {
 	})
 }
 
-// SoftDeleteProject 软删除项目
-func (c *ProjectController) SoftDeleteProject(ctx *gin.Context) {
-	idStr := ctx.Param("id")
-	id, err := strconv.ParseUint(idStr, 10, 32)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{
-			"code":    400,
-			"message": "项目ID格式错误",
-		})
-		return
-	}
-
-	// 从JWT中获取操作者ID
-	operatorID, exists := ctx.Get("userID")
-	if !exists {
-		ctx.JSON(http.StatusUnauthorized, gin.H{
-			"code":    401,
-			"message": "未授权访问",
-		})
-		return
-	}
-
-	err = c.projectService.SoftDeleteProject(uint(id), operatorID.(uint))
-	if err != nil {
-		log.Printf("软删除项目失败: %v", err)
-		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"code":    500,
-			"message": "软删除项目失败: " + err.Error(),
-		})
-		return
-	}
-
-	ctx.JSON(http.StatusOK, gin.H{
-		"code":    200,
-		"message": "项目软删除成功",
-	})
-}
-
-// RestoreProject 恢复软删除的项目
-func (c *ProjectController) RestoreProject(ctx *gin.Context) {
-	idStr := ctx.Param("id")
-	id, err := strconv.ParseUint(idStr, 10, 32)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{
-			"code":    400,
-			"message": "项目ID格式错误",
-		})
-		return
-	}
-
-	// 从JWT中获取操作者ID
-	operatorID, exists := ctx.Get("userID")
-	if !exists {
-		ctx.JSON(http.StatusUnauthorized, gin.H{
-			"code":    401,
-			"message": "未授权访问",
-		})
-		return
-	}
-
-	err = c.projectService.RestoreProject(uint(id), operatorID.(uint))
-	if err != nil {
-		log.Printf("恢复项目失败: %v", err)
-		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"code":    500,
-			"message": "恢复项目失败: " + err.Error(),
-		})
-		return
-	}
-
-	ctx.JSON(http.StatusOK, gin.H{
-		"code":    200,
-		"message": "项目恢复成功",
-	})
-}
-
 // GetProjectStats 获取项目统计信息
 func (c *ProjectController) GetProjectStats(ctx *gin.Context) {
-	stats, err := c.projectService.GetProjectStats()
-	if err != nil {
-		log.Printf("获取项目统计失败: %v", err)
-		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"code":    500,
-			"message": "获取项目统计失败: " + err.Error(),
+	userID, exists := ctx.Get("userID")
+	if !exists {
+		ctx.JSON(http.StatusUnauthorized, gin.H{
+			"code":    401,
+			"message": "未授权访问",
 		})
 		return
 	}
 
+	// userID 类型安全转换
+	var uid uint
+	switch v := userID.(type) {
+	case uint:
+		uid = v
+	case int:
+		uid = uint(v)
+	case float64:
+		uid = uint(v)
+	default:
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"code":    500,
+			"message": "用户ID格式错误",
+		})
+		return
+	}
+
+	// 调用 Service
+	stats, err := c.projectService.GetProjectStats(uid)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"code":    500,
+			"message": "获取项目统计失败",
+		})
+		return
+	}
+
+	// 返回结果
 	ctx.JSON(http.StatusOK, gin.H{
 		"code":    200,
-		"message": "获取项目统计成功",
+		"message": "查询成功",
 		"data":    stats,
 	})
 }
@@ -500,9 +453,7 @@ func (c *ProjectController) GetProjectReviews(ctx *gin.Context) {
 	})
 }
 
-// GetMyProjects 获取我的项目
 func (c *ProjectController) GetMyProjects(ctx *gin.Context) {
-	// 从JWT中获取用户ID
 	userID, exists := ctx.Get("userID")
 	if !exists {
 		ctx.JSON(http.StatusUnauthorized, gin.H{
@@ -512,10 +463,40 @@ func (c *ProjectController) GetMyProjects(ctx *gin.Context) {
 		return
 	}
 
-	// 获取状态筛选参数
+	// 类型转换
+	var uid uint
+	switch v := userID.(type) {
+	case uint:
+		uid = v
+	case int:
+		uid = uint(v)
+	case float64:
+		uid = uint(v)
+	default:
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"code":    500,
+			"message": "用户ID格式错误",
+		})
+		return
+	}
+
+	// 获取查询参数
+	pageStr := ctx.DefaultQuery("page", "1")
+	sizeStr := ctx.DefaultQuery("size", "10")
 	status := ctx.Query("status")
 
-	projects, err := c.projectService.GetMyProjects(userID.(uint), status)
+	page, _ := strconv.Atoi(pageStr)
+	if page < 1 {
+		page = 1
+	}
+
+	size, _ := strconv.Atoi(sizeStr)
+	if size < 1 || size > 100 {
+		size = 10
+	}
+
+	// 调用service，传入分页参数
+	projects, total, err := c.projectService.GetMyProjects(uid, status, page, size)
 	if err != nil {
 		log.Printf("获取我的项目失败: %v", err)
 		ctx.JSON(http.StatusInternalServerError, gin.H{
@@ -528,7 +509,12 @@ func (c *ProjectController) GetMyProjects(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, gin.H{
 		"code":    200,
 		"message": "查询成功",
-		"data":    projects,
+		"data": gin.H{
+			"list":  projects,
+			"total": total,
+			"page":  page,
+			"size":  size,
+		},
 	})
 }
 
@@ -908,7 +894,7 @@ func (c *ProjectController) UpdateProjectStatus(ctx *gin.Context) {
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{
 			"code":    400,
-			"message": "项目ID格式错误",
+			"message": "项目ID格式错1误",
 		})
 		return
 	}
@@ -1077,83 +1063,6 @@ func (c *ProjectController) GetProjectMilestones(ctx *gin.Context) {
 		"code":    200,
 		"message": "获取项目里程碑成功",
 		"data":    milestones,
-	})
-}
-
-// ApplyProjectExtension 申请项目延期
-func (c *ProjectController) ApplyProjectExtension(ctx *gin.Context) {
-	projectIDStr := ctx.Param("projectId")
-	projectID, err := strconv.ParseUint(projectIDStr, 10, 32)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{
-			"code":    400,
-			"message": "项目ID格式错误",
-		})
-		return
-	}
-
-	var req models.ProjectExtensionRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{
-			"code":    400,
-			"message": "参数错误: " + err.Error(),
-		})
-		return
-	}
-
-	userID := ctx.GetUint("user_id")
-	extension, err := c.projectService.ApplyProjectExtension(uint(projectID), userID, req)
-	if err != nil {
-		log.Printf("申请项目延期失败: %v", err)
-		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"code":    500,
-			"message": "申请项目延期失败: " + err.Error(),
-		})
-		return
-	}
-
-	ctx.JSON(http.StatusOK, gin.H{
-		"code":    200,
-		"message": "申请项目延期成功",
-		"data":    extension,
-	})
-}
-
-// ReviewProjectExtension 审核项目延期申请（教师/管理员）
-func (c *ProjectController) ReviewProjectExtension(ctx *gin.Context) {
-	extensionIDStr := ctx.Param("extensionId")
-	extensionID, err := strconv.ParseUint(extensionIDStr, 10, 32)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{
-			"code":    400,
-			"message": "延期申请ID格式错误",
-		})
-		return
-	}
-
-	var req models.ProjectExtensionReviewRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{
-			"code":    400,
-			"message": "参数错误: " + err.Error(),
-		})
-		return
-	}
-
-	userID := ctx.GetUint("user_id")
-	err = c.projectService.ReviewProjectExtension(uint(extensionID), userID, req)
-	if err != nil {
-		log.Printf("审核项目延期申请失败: %v", err)
-		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"code":    500,
-			"message": "审核项目延期申请失败: " + err.Error(),
-		})
-		return
-	}
-
-	ctx.JSON(http.StatusOK, gin.H{
-		"code":    200,
-		"message": "审核项目延期申请成功",
 	})
 }
 
@@ -1875,55 +1784,6 @@ func (c *ProjectController) UpdateStudentProjectProgress(ctx *gin.Context) {
 	})
 }
 
-// RequestProjectExtension 申请项目延期
-func (c *ProjectController) RequestProjectExtension(ctx *gin.Context) {
-	projectID, err := strconv.ParseUint(ctx.Param("id"), 10, 32)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{
-			"code":    400,
-			"message": "项目ID格式错误",
-		})
-		return
-	}
-
-	var req models.ProjectExtensionRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		log.Printf("参数绑定失败: %v", err)
-		ctx.JSON(http.StatusBadRequest, gin.H{
-			"code":    400,
-			"message": "参数错误: " + err.Error(),
-		})
-		return
-	}
-
-	// 获取当前登录用户ID
-	userID, exists := ctx.Get("user_id")
-	if !exists {
-		ctx.JSON(http.StatusUnauthorized, gin.H{
-			"code":    401,
-			"message": "用户未认证",
-		})
-		return
-	}
-
-	// 调用服务层申请项目延期
-	response, err := c.projectService.ApplyProjectExtension(uint(projectID), uint(userID.(float64)), req)
-	if err != nil {
-		log.Printf("申请项目延期失败: %v", err)
-		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"code":    500,
-			"message": "申请项目延期失败: " + err.Error(),
-		})
-		return
-	}
-
-	ctx.JSON(http.StatusOK, gin.H{
-		"code":    200,
-		"message": "申请项目延期成功",
-		"data":    response,
-	})
-}
-
 // GetStudentProjectFiles 获取学生项目文件
 func (c *ProjectController) GetStudentProjectFiles(ctx *gin.Context) {
 	projectID, err := strconv.ParseUint(ctx.Param("id"), 10, 32)
@@ -2045,80 +1905,6 @@ func (c *ProjectController) DeleteStudentProjectFile(ctx *gin.Context) {
 	})
 }
 
-// GetStudentProjectMembers 获取学生项目成员
-func (c *ProjectController) GetStudentProjectMembers(ctx *gin.Context) {
-	// 调用服务层获取项目成员
-	// 这里需要实现获取项目成员的逻辑，暂时返回空列表
-	ctx.JSON(http.StatusOK, gin.H{
-		"code":    200,
-		"message": "获取项目成员成功",
-		"data":    []interface{}{},
-	})
-}
-
-// AddStudentProjectMember 添加学生项目成员
-func (c *ProjectController) AddStudentProjectMember(ctx *gin.Context) {
-	projectID, err := strconv.ParseUint(ctx.Param("id"), 10, 32)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{
-			"code":    400,
-			"message": "项目ID格式错误",
-		})
-		return
-	}
-
-	// 获取当前登录用户ID
-	userID, exists := ctx.Get("user_id")
-	if !exists {
-		ctx.JSON(http.StatusUnauthorized, gin.H{
-			"code":    401,
-			"message": "用户未认证",
-		})
-		return
-	}
-
-	// 这里需要实现添加项目成员的逻辑
-	ctx.JSON(http.StatusOK, gin.H{
-		"code":    200,
-		"message": "添加项目成员成功",
-		"data": gin.H{
-			"projectId": projectID,
-			"userId":    userID,
-		},
-	})
-}
-
-// RemoveStudentProjectMember 移除学生项目成员
-func (c *ProjectController) RemoveStudentProjectMember(ctx *gin.Context) {
-	projectID, err := strconv.ParseUint(ctx.Param("id"), 10, 32)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{
-			"code":    400,
-			"message": "项目ID格式错误",
-		})
-		return
-	}
-
-	memberID, err := strconv.ParseUint(ctx.Param("memberId"), 10, 32)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{
-			"code":    400,
-			"message": "成员ID格式错误",
-		})
-		return
-	}
-
-	// 这里需要实现移除项目成员的逻辑
-	ctx.JSON(http.StatusOK, gin.H{
-		"code":    200,
-		"message": "移除项目成员成功",
-		"data": gin.H{
-			"projectId": projectID,
-			"memberId":  memberID,
-		},
-	})
-}
-
 // GetStudentProjectReviews 获取学生项目审核记录
 func (c *ProjectController) GetStudentProjectReviews(ctx *gin.Context) {
 	projectID, err := strconv.ParseUint(ctx.Param("id"), 10, 32)
@@ -2145,16 +1931,6 @@ func (c *ProjectController) GetStudentProjectReviews(ctx *gin.Context) {
 		"code":    200,
 		"message": "获取项目审核记录成功",
 		"data":    reviews,
-	})
-}
-
-// GetStudentProjectTimeline 获取学生项目时间线
-func (c *ProjectController) GetStudentProjectTimeline(ctx *gin.Context) {
-	// 这里需要实现获取项目时间线的逻辑，暂时返回空列表
-	ctx.JSON(http.StatusOK, gin.H{
-		"code":    200,
-		"message": "获取项目时间线成功",
-		"data":    []interface{}{},
 	})
 }
 
@@ -2220,70 +1996,6 @@ func (c *ProjectController) GetStudentProjectSuggestions(ctx *gin.Context) {
 		"message": "获取项目建议成功",
 		"data": gin.H{
 			"userId": userID,
-		},
-	})
-}
-
-// GetStudentProjectNotifications 获取学生项目通知
-func (c *ProjectController) GetStudentProjectNotifications(ctx *gin.Context) {
-	// 获取当前登录用户ID
-	userID, exists := ctx.Get("user_id")
-	if !exists {
-		ctx.JSON(http.StatusUnauthorized, gin.H{
-			"code":    401,
-			"message": "用户未认证",
-		})
-		return
-	}
-
-	// 这里需要实现获取学生项目通知的逻辑
-	ctx.JSON(http.StatusOK, gin.H{
-		"code":    200,
-		"message": "获取项目通知成功",
-		"data": gin.H{
-			"userId": userID,
-		},
-	})
-}
-
-// GetStudentProjectCollaboration 获取学生项目协作记录
-func (c *ProjectController) GetStudentProjectCollaboration(ctx *gin.Context) {
-	// 这里需要实现获取项目协作记录的逻辑，暂时返回空列表
-	ctx.JSON(http.StatusOK, gin.H{
-		"code":    200,
-		"message": "获取项目协作记录成功",
-		"data":    []interface{}{},
-	})
-}
-
-// CreateStudentProjectCollaboration 创建学生项目协作记录
-func (c *ProjectController) CreateStudentProjectCollaboration(ctx *gin.Context) {
-	projectID, err := strconv.ParseUint(ctx.Param("id"), 10, 32)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{
-			"code":    400,
-			"message": "项目ID格式错误",
-		})
-		return
-	}
-
-	// 获取当前登录用户ID
-	userID, exists := ctx.Get("user_id")
-	if !exists {
-		ctx.JSON(http.StatusUnauthorized, gin.H{
-			"code":    401,
-			"message": "用户未认证",
-		})
-		return
-	}
-
-	// 这里需要实现创建项目协作记录的逻辑
-	ctx.JSON(http.StatusOK, gin.H{
-		"code":    200,
-		"message": "创建项目协作记录成功",
-		"data": gin.H{
-			"projectId": projectID,
-			"userId":    userID,
 		},
 	})
 }

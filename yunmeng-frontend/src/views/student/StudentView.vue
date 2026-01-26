@@ -35,10 +35,6 @@
               <i class="el-icon-s-home"></i>
               <span>首页概览</span>
             </el-menu-item>
-            <el-menu-item index="projects">
-              <i class="el-icon-document"></i>
-              <span>我的项目</span>
-            </el-menu-item>
             <el-sub-menu index="project-management">
               <template #title>
                 <i class="el-icon-s-operation"></i>
@@ -186,9 +182,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
 import ProjectList from './ProjectManagement.vue'
 import CompetitionView from './CompetitionView.vue'
 import CompetitionSubmission from './CompetitionSubmission.vue'
@@ -200,6 +194,14 @@ import ProjectMilestones from './ProjectMilestones.vue'
 import ProjectFiles from './ProjectFiles.vue'
 import ProjectExtensions from './ProjectExtensions.vue'
 import ProjectProgress from './ProjectProgress.vue'
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
+import { ElMessage, ElMessageBox } from 'element-plus'  // 添加 ElMessageBox
+
+
+
+
+
+
 
 const router = useRouter()
 const activeMenu = ref('dashboard')
@@ -209,6 +211,57 @@ const stats = ref({
   projectCount: 0,
   pendingCount: 0,
   competitionCount: 0
+})
+
+// 心跳检测
+let heartbeatInterval
+
+const startHeartbeat = () => {
+  heartbeatInterval = setInterval(() => {
+    const token = localStorage.getItem('token')
+    if (!token) {
+      console.log('心跳检测: token丢失')
+      clearInterval(heartbeatInterval)
+      ElMessage.warning('登录已过期，请重新登录')
+      router.push('/login')
+    }
+  }, 30000)
+}
+
+// 检查登录状态
+const checkLoginStatus = () => {
+  const token = localStorage.getItem('token')
+  const userRole = localStorage.getItem('userRole')
+  
+  if (!token || userRole !== 'student') {
+    return false
+  }
+  return true
+}
+
+// 组件挂载
+onMounted(() => {
+  console.log('学生端组件初始化')
+  
+  // 检查登录状态
+  if (!checkLoginStatus()) {
+    ElMessage.warning('请先登录')
+    router.push('/login')
+    return
+  }
+  
+  // 启动心跳检测
+  startHeartbeat()
+  
+  // 加载数据
+  loadStats()
+})
+
+// 组件卸载
+onUnmounted(() => {
+  if (heartbeatInterval) {
+    clearInterval(heartbeatInterval)
+  }
 })
 
 // 最近活动数据

@@ -103,21 +103,16 @@ func RegisterRoutes(r *gin.Engine, db *gorm.DB) {
 				teacherProjects.GET("/my-review-tasks", projectController.GetMyReviewTasks)           // 获取我的审核任务
 				teacherProjects.GET("/review-flow-config", projectController.GetReviewFlowConfig)     // 获取审核流程配置
 
-				// =============================================
-				// 2. 项目生命周期管理增强路由（教师/管理员）
-				// =============================================
-				teacherProjects.PUT("/extensions/:extensionId/review", projectController.ReviewProjectExtension) // 审核项目延期申请
 			}
 
 			// 管理员项目管理路由
 			adminProjects := auth.Group("/admin/projects")
-			adminProjects.Use(middlewares.AdminOnly())
+			//adminProjects.Use(middlewares.AdminOnly())
 			{
 				adminProjects.PUT("/:id/force-status", projectController.ForceUpdateProjectStatus) // 强制更新项目状态
-				adminProjects.DELETE("/:id/soft", projectController.SoftDeleteProject)             // 软删除项目
-				adminProjects.PUT("/:id/restore", projectController.RestoreProject)                // 恢复软删除的项目
-				adminProjects.GET("/stats", projectController.GetProjectStats)                     // 获取项目统计
-				adminProjects.POST("/export", projectController.ExportProjects)                    // 导出项目数据
+
+				adminProjects.GET("/stats", projectController.GetProjectStats)  // 获取项目统计
+				adminProjects.POST("/export", projectController.ExportProjects) // 导出项目数据
 
 				// =============================================
 				// 4. 项目分类管理增强路由（管理员）
@@ -150,7 +145,7 @@ func RegisterRoutes(r *gin.Engine, db *gorm.DB) {
 
 			// 学生获取教师列表路由（学生需要选择指导老师）
 			studentTeachers := auth.Group("/student-teachers")
-			studentTeachers.Use(middlewares.RoleMiddleware("student"))
+			//studentTeachers.Use(middlewares.RoleMiddleware("student"))
 			{
 				studentTeachers.GET("", projectController.GetTeacherList) // 学生获取教师列表
 			}
@@ -159,16 +154,12 @@ func RegisterRoutes(r *gin.Engine, db *gorm.DB) {
 			projects := auth.Group("/projects")
 			{
 				projects.GET("/my", projectController.GetMyProjects)                // 学生获取我的项目
+				projects.GET("/status", projectController.GetProjectStats)          // 获取项目统计信息
+				projects.PUT("/update", projectController.UpdateProject)            // 更新项目状态
 				projects.GET("/:id", projectController.GetProjectByID)              // 查看项目详情
 				projects.POST("", projectController.CreateProject)                  // 学生创建项目
 				projects.PUT("/:id", projectController.UpdateProjectWithValidation) // 学生修改草稿项目（带验证）
 				projects.POST("/submit/:id", projectController.SubmitProject)       // 提交项目审核
-
-				// =============================================
-				// 1. 项目状态管理增强路由
-				// =============================================
-				projects.PUT("/:id/status", projectController.UpdateProjectStatus)             // 更新项目状态
-				projects.GET("/:id/status-history", projectController.GetProjectStatusHistory) // 获取项目状态变更历史
 
 				// =============================================
 				// 2. 项目生命周期管理增强路由
@@ -176,7 +167,6 @@ func RegisterRoutes(r *gin.Engine, db *gorm.DB) {
 				projects.POST("/:id/milestones", projectController.CreateProjectMilestone)         // 创建项目里程碑
 				projects.PUT("/milestones/:milestoneId", projectController.UpdateProjectMilestone) // 更新项目里程碑
 				projects.GET("/:id/milestones", projectController.GetProjectMilestones)            // 获取项目里程碑列表
-				projects.POST("/:id/extensions", projectController.ApplyProjectExtension)          // 申请项目延期
 				projects.PUT("/:id/progress", projectController.UpdateProjectProgress)             // 更新项目进度
 
 				// =============================================
@@ -205,40 +195,11 @@ func RegisterRoutes(r *gin.Engine, db *gorm.DB) {
 
 			// 学生竞赛路由
 			studentCompetitions := auth.Group("/student-competitions")
-			studentCompetitions.Use(middlewares.RoleMiddleware("student"))
+			//studentCompetitions.Use(middlewares.RoleMiddleware("student"))
 			{
 				studentCompetitions.POST("/:id/register", competitionController.RegisterCompetition) // 报名竞赛
 				studentCompetitions.GET("/my", competitionController.GetMyRegistrations)             // 查看自己的报名记录
 				studentCompetitions.POST("/:id/upload", competitionController.UploadSubmission)      // 上传参赛成果
-			}
-
-			// 学生项目路由
-			studentProjects := auth.Group("/student")
-			studentProjects.Use(middlewares.RoleMiddleware("student", "admin"))
-			{
-				studentProjects.GET("/projects", projectController.GetStudentProjects)                                   // 获取学生项目列表
-				studentProjects.GET("/projects/stats", projectController.GetStudentProjectStats)                         // 获取学生项目统计
-				studentProjects.GET("/projects/:id", projectController.GetStudentProjectByID)                            // 获取学生项目详情
-				studentProjects.POST("/projects", projectController.CreateStudentProject)                                // 创建学生项目
-				studentProjects.PUT("/projects/:id", projectController.UpdateStudentProject)                             // 更新学生项目
-				studentProjects.DELETE("/projects/:id", projectController.DeleteStudentProject)                          // 删除学生项目
-				studentProjects.POST("/projects/:id/submit", projectController.SubmitStudentProject)                     // 提交学生项目
-				studentProjects.PUT("/projects/:id/progress", projectController.UpdateStudentProjectProgress)            // 更新学生项目进度
-				studentProjects.POST("/projects/:id/extension", projectController.RequestProjectExtension)               // 申请项目延期
-				studentProjects.GET("/projects/:id/files", projectController.GetStudentProjectFiles)                     // 获取学生项目文件
-				studentProjects.POST("/projects/:id/files", projectController.UploadStudentProjectFile)                  // 上传学生项目文件
-				studentProjects.DELETE("/projects/:id/files/:fileId", projectController.DeleteStudentProjectFile)        // 删除学生项目文件
-				studentProjects.GET("/projects/:id/members", projectController.GetStudentProjectMembers)                 // 获取学生项目成员
-				studentProjects.POST("/projects/:id/members", projectController.AddStudentProjectMember)                 // 添加学生项目成员
-				studentProjects.DELETE("/projects/:id/members/:memberId", projectController.RemoveStudentProjectMember)  // 移除学生项目成员
-				studentProjects.GET("/projects/:id/reviews", projectController.GetStudentProjectReviews)                 // 获取学生项目审核记录
-				studentProjects.GET("/projects/:id/timeline", projectController.GetStudentProjectTimeline)               // 获取学生项目时间线
-				studentProjects.GET("/projects/export", projectController.ExportStudentProjects)                         // 导出学生项目数据
-				studentProjects.GET("/projects/report", projectController.GetStudentProjectReport)                       // 获取学生项目报告
-				studentProjects.GET("/projects/suggestions", projectController.GetStudentProjectSuggestions)             // 获取学生项目建议
-				studentProjects.GET("/projects/notifications", projectController.GetStudentProjectNotifications)         // 获取学生项目通知
-				studentProjects.GET("/projects/:id/collaboration", projectController.GetStudentProjectCollaboration)     // 获取学生项目协作记录
-				studentProjects.POST("/projects/:id/collaboration", projectController.CreateStudentProjectCollaboration) // 创建学生项目协作记录
 			}
 
 			// 教师竞赛路由
