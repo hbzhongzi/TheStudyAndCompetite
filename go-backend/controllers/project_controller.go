@@ -65,8 +65,20 @@ func (c *ProjectController) GetProjectList(ctx *gin.Context) {
 
 // GetProjectByID 根据ID获取项目详情
 func (c *ProjectController) GetProjectByID(ctx *gin.Context) {
-	idStr := ctx.Param("id")
-	id, err := strconv.ParseUint(idStr, 10, 32)
+	// 从查询参数获取 id
+	idStr := ctx.Query("id")
+
+	// 参数为空校验
+	if idStr == "" {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"code":    400,
+			"message": "项目ID不能为空",
+		})
+		return
+	}
+
+	// 转换为 uint32
+	parsedID, err := strconv.ParseUint(idStr, 10, 32)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{
 			"code":    400,
@@ -74,6 +86,8 @@ func (c *ProjectController) GetProjectByID(ctx *gin.Context) {
 		})
 		return
 	}
+
+	id := uint32(parsedID)
 
 	project, err := c.projectService.GetProjectByID(uint(id))
 	if err != nil {

@@ -120,9 +120,6 @@ func (s *ProjectService) GetProjectByID(id uint) (*models.ProjectDetailResponse,
 	var project models.Project
 	err := s.db.Preload("Student.Profile").
 		Preload("Teacher.Profile").
-		Preload("Members").
-		Preload("Files").
-		Preload("Reviews.Reviewer.Profile").
 		First(&project, id).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -137,9 +134,10 @@ func (s *ProjectService) GetProjectByID(id uint) (*models.ProjectDetailResponse,
 		ID:          project.ID,
 		Title:       project.Title,
 		Description: project.Description,
+		IsApproved:  project.IsApproved,
+		Plan:        project.Plan,
 		Type:        project.Type,
 		Status:      project.Status,
-		SubmittedAt: project.SubmittedAt,
 		CreatedAt:   project.CreatedAt,
 		UpdatedAt:   project.UpdatedAt,
 	}

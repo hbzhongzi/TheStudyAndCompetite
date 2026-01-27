@@ -153,7 +153,7 @@ type ProjectReviewRequest struct {
 // ProjectListResponse 项目列表响应
 type ProjectListResponse struct {
 	ID          uint       `json:"id"`
-	IsApproved  int        `json:"isApproved"`
+	IsApproved  bool       `json:"isApproved"`
 	Title       string     `json:"title"`
 	Description string     `json:"description"`
 	Type        string     `json:"type"`
@@ -162,9 +162,10 @@ type ProjectListResponse struct {
 	StudentID   string     `json:"studentId"`
 	TeacherName string     `json:"teacherName"`
 	TeacherID   uint       `json:"teacherId"`
-	SubmittedAt *time.Time `json:"submittedAt"`
+	Plan        string     `json:"plan"`
 	CreatedAt   time.Time  `json:"createdAt"`
 	UpdatedAt   time.Time  `json:"updatedAt"`
+	SubmittedAt *time.Time `json:"submittedAt"`
 	MemberCount int        `json:"memberCount"`
 	FileCount   int        `json:"fileCount"`
 	ReviewCount int        `json:"reviewCount"`
@@ -172,14 +173,15 @@ type ProjectListResponse struct {
 
 // ProjectDetailResponse 项目详情响应
 type ProjectDetailResponse struct {
-	ID          uint       `json:"id"`
-	Title       string     `json:"title"`
-	Description string     `json:"description"`
-	Type        string     `json:"type"`
-	Status      string     `json:"status"`
-	SubmittedAt *time.Time `json:"submittedAt"`
-	CreatedAt   time.Time  `json:"createdAt"`
-	UpdatedAt   time.Time  `json:"updatedAt"`
+	ID          uint      `json:"id"`
+	Title       string    `json:"title"`
+	Description string    `json:"description"`
+	IsApproved  bool      `json:"isApproved"`
+	Type        string    `json:"type"`
+	Status      string    `json:"status"`
+	Plan        string    `json:"plan"`
+	CreatedAt   time.Time `json:"createdAt"`
+	UpdatedAt   time.Time `json:"updatedAt"`
 	Student     struct {
 		ID         uint   `json:"id"`
 		Username   string `json:"username"`
@@ -197,29 +199,12 @@ type ProjectDetailResponse struct {
 		Phone      string `json:"phone"`
 		Department string `json:"department"`
 	} `json:"teacher"`
-	Members []struct {
-		ID            uint   `json:"id"`
-		Name          string `json:"name"`
-		StudentNumber string `json:"studentNumber"`
-		Role          string `json:"role"`
-	} `json:"members"`
 	Files []struct {
 		ID         uint      `json:"id"`
 		FileName   string    `json:"fileName"`
 		FileURL    string    `json:"fileUrl"`
 		UploadTime time.Time `json:"uploadTime"`
 	} `json:"files"`
-	Reviews []struct {
-		ID         uint      `json:"id"`
-		Status     string    `json:"status"`
-		Comments   string    `json:"comments"`
-		ReviewTime time.Time `json:"reviewTime"`
-		Reviewer   struct {
-			ID       uint   `json:"id"`
-			Username string `json:"username"`
-			RealName string `json:"realName"`
-		} `json:"reviewer"`
-	} `json:"reviews"`
 }
 
 // ProjectStats 项目统计信息

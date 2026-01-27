@@ -156,7 +156,7 @@ func RegisterRoutes(r *gin.Engine, db *gorm.DB) {
 				projects.GET("/my", projectController.GetMyProjects)                // 学生获取我的项目
 				projects.GET("/status", projectController.GetProjectStats)          // 获取项目统计信息
 				projects.PUT("/update", projectController.UpdateProject)            // 更新项目状态
-				projects.GET("/:id", projectController.GetProjectByID)              // 查看项目详情
+				projects.GET("/detail", projectController.GetProjectByID)           // 查看项目详情
 				projects.POST("", projectController.CreateProject)                  // 学生创建项目
 				projects.PUT("/:id", projectController.UpdateProjectWithValidation) // 学生修改草稿项目（带验证）
 				projects.POST("/submit/:id", projectController.SubmitProject)       // 提交项目审核
