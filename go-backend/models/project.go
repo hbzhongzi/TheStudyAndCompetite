@@ -116,13 +116,13 @@ func (st *StudentTeacher) TableName() string {
 
 // ProjectCreateRequest 创建项目请求
 type ProjectCreateRequest struct {
-	Title       string `json:"title" binding:"required,max=100"`
-	Description string `json:"description"`
-	Type        string `json:"type" `
-	Status      string `json:"status" `
-	TeacherID   uint   `json:"teacherId" binding:"required"`
-	Plan        string `json:"plan"`
-	FinishedAt  string `json:"finishedAt"`
+	Title       string    `json:"title" binding:"required,max=100"`
+	Description string    `json:"description"`
+	Type        string    `json:"type" `
+	Status      string    `json:"status" `
+	TeacherID   uint      `json:"teacherId" binding:"required"`
+	Plan        string    `json:"plan"`
+	FinishedAt  time.Time `json:"finishedAt"`
 }
 
 // FileRequest 文件请求

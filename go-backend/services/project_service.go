@@ -185,6 +185,7 @@ func (s *ProjectService) CreateProject(studentID uint, req models.ProjectCreateR
 		StudentID:   studentID,
 		TeacherID:   req.TeacherID,
 		Plan:        req.Plan,
+		FinishTime:  req.FinishedAt,
 		Status:      "draft",
 		Progress:    0,
 		Deleted:     false,

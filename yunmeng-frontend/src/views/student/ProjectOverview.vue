@@ -21,10 +21,10 @@
           </el-select>
         </el-col>
 
-        <el-col :span="6">
-          <el-button type="primary" @click="createProject">创建项目</el-button>
+      <el-col :span="6">
+          <el-button type="primary" @click="openCreateDialog">创建项目</el-button>
           <el-button @click="reload">刷新</el-button>
-        </el-col>
+      </el-col>
       </el-row>
     </el-card>
 
@@ -124,74 +124,209 @@
     </el-dialog>
 
   </div>
+
+<el-dialog
+  v-model="createVisible"
+  title="创建项目"
+  width="600px"
+>
+  <el-form
+    ref="createFormRef"
+    :model="createForm"
+    :rules="createRules"
+    label-width="100px"
+  >
+    <!-- 项目标题 -->
+    <el-form-item label="项目标题" prop="title">
+      <el-input
+        v-model="createForm.title"
+        placeholder="请输入项目标题（不超过100字）"
+        maxlength="100"
+        show-word-limit
+      />
+    </el-form-item>
+
+    <!-- 项目类型 -->
+    <el-form-item label="项目类型" prop="type">
+      <el-radio-group v-model="createForm.type">
+        <el-radio label="科研">科研项目</el-radio>
+        <el-radio label="竞赛">竞赛项目</el-radio>
+      </el-radio-group>
+    </el-form-item>
+
+    <!-- 指导教师 -->
+    <el-form-item label="指导教师" prop="teacherId">
+      <el-select
+        v-model="createForm.teacherId"
+        placeholder="请选择指导教师"
+        filterable
+      >
+        <el-option
+            v-for="t in teacherList"
+            :key="t.id"
+            :label="`${t.realName}（${t.department}）`"
+            :value="t.id"
+        />
+      </el-select>
+    </el-form-item>
+
+    <!-- 项目描述 -->
+    <el-form-item label="项目描述">
+      <el-input
+        v-model="createForm.description"
+        type="textarea"
+        rows="3"
+        placeholder="项目背景、研究内容说明"
+      />
+    </el-form-item>
+
+    <!-- 预期成果 -->
+    <el-form-item label="预期成果">
+      <el-input
+        v-model="createForm.plan"
+        type="textarea"
+        rows="3"
+        placeholder="论文、系统、竞赛成果等"
+      />
+    </el-form-item>
+
+    <!-- 预计完成时间 -->
+    <el-form-item label="预计完成时间">
+      <el-date-picker
+        v-model="createForm.FinishedAt"
+        type="date"
+        placeholder="选择日期"
+        value-format="YYYY-MM-DDTHH:mm:ssZ"
+        format="YYYY-MM-DD"
+      />
+    </el-form-item>
+  </el-form>
+
+  <template #footer>
+    <el-button @click="createVisible = false">取消</el-button>
+    <el-button type="primary" @click="submitCreate">提交</el-button>
+  </template>
+</el-dialog>
+
 </template>
 
 <script setup>
+/* ==================== 基础依赖 ==================== */
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Search } from '@element-plus/icons-vue'
-import studentService from '../../services/studentService'
 
+import studentService from '@/services/studentService'
+import { projectService } from '@/services/projectService'
+import { teacherService } from '@/services/teacherService'
+
+/* ==================== 创建项目相关 ==================== */
+const createVisible = ref(false)
+const createFormRef = ref(null)
+
+const createForm = ref({
+  title: '',
+  description: '',
+  type: '科研',
+  status: 'draft',
+  teacherId: '',
+  plan: '',
+  FinishedAt: null
+})
+
+const createRules = {
+  title: [
+    { required: true, message: '请输入项目标题', trigger: 'blur' },
+    { max: 100, message: '标题不超过100字', trigger: 'blur' }
+  ],
+  teacherId: [
+    { required: true, message: '请选择指导教师', trigger: 'change' }
+  ],
+  type: [
+    { required: true, message: '请选择项目类型', trigger: 'change' }
+  ]
+}
+
+const teacherList = ref([])
+
+const openCreateDialog = () => {
+  createVisible.value = true
+}
+
+const submitCreate = () => {
+  createFormRef.value.validate(async valid => {
+    if (!valid) return
+
+    await projectService.createProject(createForm.value)
+    ElMessage.success('项目创建成功')
+
+    createVisible.value = false
+    reloadProjects()
+    loadStats()
+  })
+}
+
+const loadTeachers = async () => {
+  const res = await teacherService.getTeacherList()
+  teacherList.value = res.data || []
+}
+
+/* ==================== 项目列表 & 分页 ==================== */
 const loading = ref(false)
 const projects = ref([])
-const stats = ref([])
 const current = ref(null)
 
-const detailVisible = ref(false)
-const progressVisible = ref(false)
+const query = ref({
+  keyword: '',
+  status: '',
+  type: ''
+})
 
-const progressForm = ref({ progress: 0, description: '' })
+const page = ref({
+  page: 1,
+  size: 10,
+  total: 0
+})
 
-const query = ref({ keyword: '', status: '', type: '' })
-const page = ref({ page: 1, size: 10, total: 0 })
-
-const reload = async () => {
+const reloadProjects = async () => {
   loading.value = true
+
   const res = await studentService.getMyProjects({
     ...query.value,
     page: page.value.page,
     size: page.value.size
   })
+
   projects.value = (res.data.list || []).map(p => ({
     ...p,
     name: p.title
   }))
+
   page.value.total = res.data.total
   loading.value = false
 }
 
+/* ==================== 统计数据 ==================== */
+const stats = ref([])
+
 const loadStats = async () => {
-  const res = await studentService.getProjectStats()
-  const d = res.data
+  const { data } = await studentService.getProjectStats()
+
   stats.value = [
-    { title: '项目总数', value: d.totalProjects },
-    { title: '进行中', value: d.ongoingProjects },
-    { title: '已完成', value: d.completedProjects },
-    { title: '待审核', value: d.pendingProjects }
+    { title: '项目总数', value: data.totalProjects },
+    { title: '进行中', value: data.ongoingProjects },
+    { title: '已完成', value: data.completedProjects },
+    { title: '待审核', value: data.pendingProjects }
   ]
 }
 
+/* ==================== 项目详情 & 进度 ==================== */
+const detailVisible = ref(false)
+const progressVisible = ref(false)
 
-const formatDateTime = (dateString) => {
-  if (!dateString) return '--'
-  
-  try {
-    const date = new Date(dateString)
-    
-    // 格式：YYYY-MM-DD HH:mm:ss
-    const year = date.getFullYear()
-    const month = String(date.getMonth() + 1).padStart(2, '0')
-    const day = String(date.getDate()).padStart(2, '0')
-    const hours = String(date.getHours()).padStart(2, '0')
-    const minutes = String(date.getMinutes()).padStart(2, '0')
-    const seconds = String(date.getSeconds()).padStart(2, '0')
-    
-    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
-  } catch (error) {
-    console.error('日期格式化错误:', error)
-    return dateString
-  }
-}
+const progressForm = ref({
+  progress: 0,
+  description: ''
+})
 
 const openDetail = row => {
   current.value = row
@@ -201,23 +336,37 @@ const openDetail = row => {
 const openProgress = row => {
   current.value = row
   progressForm.value.progress = row.progress
+  progressForm.value.description = ''
   progressVisible.value = true
 }
 
 const submitProgress = async () => {
-  await studentService.updateProjectProgress(current.value.id, progressForm.value)
-  ElMessage.success('更新成功')
+  await studentService.updateProjectProgress(
+    current.value.id,
+    progressForm.value
+  )
+
+  ElMessage.success('进度更新成功')
   progressVisible.value = false
-  reload()
+  reloadProjects()
 }
 
+/* ==================== 删除项目 ==================== */
 const remove = row => {
   ElMessageBox.confirm('确认删除该项目？', '提示', { type: 'warning' })
     .then(async () => {
       await studentService.deleteProject(row.id)
       ElMessage.success('删除成功')
-      reload()
+      reloadProjects()
+      loadStats()
     })
+}
+
+/* ==================== 工具函数 ==================== */
+const formatDateTime = dateString => {
+  if (!dateString) return '--'
+  const date = new Date(dateString)
+  return date.toLocaleString('zh-CN', { hour12: false })
 }
 
 const statusText = s =>
@@ -226,39 +375,10 @@ const statusText = s =>
 const statusTag = s =>
   ({ ongoing: 'success', completed: 'success', pending: 'warning', rejected: 'danger' }[s] || '')
 
-const createProject = () => {
-  ElMessage.info('跳转到项目创建页面')
-}
-
+/* ==================== 生命周期 ==================== */
 onMounted(() => {
-  reload()
+  reloadProjects()
   loadStats()
+  loadTeachers()
 })
 </script>
-
-<style scoped>
-.project-overview {
-  padding: 20px;
-}
-.filter-card {
-  margin-bottom: 20px;
-}
-.stat-row {
-  margin-bottom: 20px;
-}
-.stat-card {
-  text-align: center;
-}
-.stat-value {
-  font-size: 26px;
-  font-weight: bold;
-}
-.stat-title {
-  color: #666;
-  margin-top: 6px;
-}
-.pagination {
-  margin-top: 20px;
-  text-align: right;
-}
-</style>

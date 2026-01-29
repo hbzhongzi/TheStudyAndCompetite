@@ -78,23 +78,21 @@
       width="40%"
     >
       <el-form :model="form" label-width="120px">
-        <el-form-item label="项目ID">
-          <el-input v-model="form.projectId" placeholder="请输入项目ID" />
-        </el-form-item>
+       <el-form-item label="项目ID">
+      <el-input
+        v-model.number="form.projectId"
+        type="number"
+        placeholder="请输入数字ID"
+      />
+    </el-form-item>
 
-        <el-form-item label="原完成时间">
-          <el-date-picker
-            v-model="form.originalFinishTime"
-            type="date"
-            value-format="YYYY-MM-DD"
-          />
-        </el-form-item>
 
         <el-form-item label="申请完成时间">
           <el-date-picker
-            v-model="form.requestedFinishTime"
-            type="date"
-            value-format="YYYY-MM-DD"
+              v-model="form.requestedFinishTime"
+              type="date"
+              value-format="YYYY-MM-DDTHH:mm:ssZ"
+              format="YYYY-MM-DD"
           />
         </el-form-item>
 
@@ -175,7 +173,7 @@ const current = ref(null)
 
 // 表单
 const form = ref({
-  projectId: '',
+  projectId: null,
   originalFinishTime: '',
   requestedFinishTime: '',
   applyReason: ''
