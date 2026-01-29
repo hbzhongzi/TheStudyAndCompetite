@@ -41,7 +41,6 @@
                 <span>项目管理</span>
               </template>
               <el-menu-item index="project-overview">项目概览</el-menu-item>
-              <el-menu-item index="project-milestones">里程碑管理</el-menu-item>
               <el-menu-item index="project-files">文件管理</el-menu-item>
               <el-menu-item index="project-extensions">延期申请</el-menu-item>
               <el-menu-item index="project-progress">进度跟踪</el-menu-item>
@@ -190,7 +189,6 @@ import MyCompetitions from './MyCompetitions.vue'
 import ApplicationView from './ApplicationView.vue'
 import ProfileView from './ProfileView.vue'
 import ProjectOverview from './ProjectOverview.vue'
-import ProjectMilestones from './ProjectMilestones.vue'
 import ProjectFiles from './ProjectFiles.vue'
 import ProjectExtensions from './ProjectExtensions.vue'
 import ProjectProgress from './ProjectProgress.vue'

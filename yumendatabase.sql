@@ -11,7 +11,7 @@
  Target Server Version : 80043 (8.0.43)
  File Encoding         : 65001
 
- Date: 27/01/2026 16:57:50
+ Date: 29/01/2026 17:23:46
 */
 
 SET NAMES utf8mb4;
@@ -66,7 +66,7 @@ CREATE TABLE `competition_audit_logs`  (
   INDEX `idx_competition_audit_logs_created_at`(`created_at` ASC) USING BTREE,
   CONSTRAINT `competition_audit_logs_ibfk_1` FOREIGN KEY (`competition_id`) REFERENCES `competitions` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT,
   CONSTRAINT `competition_audit_logs_ibfk_2` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT
-) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '竞赛审计日志表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '竞赛审计日志表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of competition_audit_logs
@@ -91,7 +91,7 @@ CREATE TABLE `competition_feedback`  (
   INDEX `idx_competition_feedback_created_at`(`created_at` ASC) USING BTREE,
   CONSTRAINT `competition_feedback_ibfk_1` FOREIGN KEY (`submission_id`) REFERENCES `competition_submissions` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT,
   CONSTRAINT `competition_feedback_ibfk_2` FOREIGN KEY (`teacher_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT
-) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '竞赛教师评语表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '竞赛教师评语表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of competition_feedback
@@ -186,7 +186,7 @@ CREATE TABLE `competition_results`  (
   CONSTRAINT `competition_results_ibfk_1` FOREIGN KEY (`competition_id`) REFERENCES `competitions` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT,
   CONSTRAINT `competition_results_ibfk_2` FOREIGN KEY (`student_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT,
   CONSTRAINT `competition_results_ibfk_3` FOREIGN KEY (`finalized_by`) REFERENCES `users` (`id`) ON DELETE SET NULL ON UPDATE RESTRICT
-) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '竞赛获奖登记表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '竞赛获奖登记表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of competition_results
@@ -210,7 +210,7 @@ CREATE TABLE `competition_scores`  (
   INDEX `idx_competition_scores_scored_at`(`scored_at` ASC) USING BTREE,
   CONSTRAINT `competition_scores_ibfk_1` FOREIGN KEY (`submission_id`) REFERENCES `competition_submissions` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT,
   CONSTRAINT `competition_scores_ibfk_2` FOREIGN KEY (`judge_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT
-) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '竞赛评分记录表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '竞赛评分记录表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of competition_scores
@@ -239,7 +239,7 @@ CREATE TABLE `competition_submissions`  (
   INDEX `idx_competition_submissions_locked`(`locked` ASC) USING BTREE,
   CONSTRAINT `competition_submissions_ibfk_1` FOREIGN KEY (`competition_id`) REFERENCES `competitions` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT,
   CONSTRAINT `competition_submissions_ibfk_2` FOREIGN KEY (`student_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT
-) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '竞赛成果提交表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '竞赛成果提交表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of competition_submissions
@@ -307,7 +307,7 @@ CREATE TABLE `files`  (
   INDEX `idx_files_created_at`(`created_at` ASC) USING BTREE,
   INDEX `idx_files_file_type`(`file_type` ASC) USING BTREE,
   CONSTRAINT `files_ibfk_1` FOREIGN KEY (`uploaded_by`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT
-) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '文件表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '文件表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of files
@@ -330,11 +330,43 @@ CREATE TABLE `login_logs`  (
   INDEX `idx_login_logs_ip_address`(`ip_address` ASC) USING BTREE,
   INDEX `idx_login_logs_status`(`status` ASC) USING BTREE,
   CONSTRAINT `login_logs_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT
-) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '登录日志表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '登录日志表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of login_logs
 -- ----------------------------
+
+-- ----------------------------
+-- Table structure for project_extension_applications
+-- ----------------------------
+DROP TABLE IF EXISTS `project_extension_applications`;
+CREATE TABLE `project_extension_applications`  (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '延期申请ID',
+  `project_id` bigint NOT NULL COMMENT '项目ID',
+  `student_id` bigint NOT NULL COMMENT '申请学生ID',
+  `teacher_id` bigint NOT NULL COMMENT '审批教师ID',
+  `original_finish_time` datetime NOT NULL COMMENT '原预计完成时间',
+  `requested_finish_time` datetime NOT NULL COMMENT '申请延期后的完成时间',
+  `apply_reason` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '学生申请延期原因',
+  `status` enum('pending','approved','rejected') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'pending' COMMENT '审批状态',
+  `review_reason` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL COMMENT '教师审批意见',
+  `reviewed_at` datetime NULL DEFAULT NULL COMMENT '审批时间',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '申请时间',
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (`id`) USING BTREE,
+  INDEX `idx_extension_project_id`(`project_id` ASC) USING BTREE,
+  INDEX `idx_extension_student_id`(`student_id` ASC) USING BTREE,
+  INDEX `idx_extension_teacher_id`(`teacher_id` ASC) USING BTREE,
+  INDEX `idx_extension_status`(`status` ASC) USING BTREE,
+  CONSTRAINT `fk_extension_project` FOREIGN KEY (`project_id`) REFERENCES `projects` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT,
+  CONSTRAINT `fk_extension_student` FOREIGN KEY (`student_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT,
+  CONSTRAINT `fk_extension_teacher` FOREIGN KEY (`teacher_id`) REFERENCES `users` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+) ENGINE = InnoDB AUTO_INCREMENT = 3 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '项目延期申请记录表' ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Records of project_extension_applications
+-- ----------------------------
+INSERT INTO `project_extension_applications` VALUES (2, 1, 4, 2, '2026-01-28 16:04:15', '2025-01-12 08:00:00', '忘记了', 'approved', '', '2026-01-29 09:39:09', '2026-01-28 16:06:34', '2026-01-29 09:39:09');
 
 -- ----------------------------
 -- Table structure for project_types
@@ -413,7 +445,7 @@ CREATE TABLE `projects`  (
 -- ----------------------------
 -- Records of projects
 -- ----------------------------
-INSERT INTO `projects` VALUES (1, '基于深度学习的图像识别系统', '使用深度学习技术开发图像识别系统，提高识别准确率', 5, 4, 2, 'rejected', NULL, NULL, NULL, NULL, '2026-01-21 10:07:25', '2026-01-26 15:41:53', 0, 0, '创新项目', '预计6个月完成，分为需求分析、设计、开发、测试四个阶段', 99, '2026-01-26 15:41:53');
+INSERT INTO `projects` VALUES (1, '基于深度学习的图像识别系统', '使用深度学习技术开发图像识别系统，提高识别准确率', 5, 4, 2, 'approved', NULL, NULL, NULL, NULL, '2026-01-21 10:07:25', '2026-01-29 09:39:09', 0, 0, '创新项目', '预计6个月完成，分为需求分析、设计、开发、测试四个阶段', 99, '2025-01-12 08:00:00');
 INSERT INTO `projects` VALUES (2, '校园二手交易平台', '开发校园二手交易平台，促进资源循环利用', 8, 5, 3, 'reviewing', NULL, NULL, NULL, NULL, '2026-01-21 10:07:25', '2026-01-26 14:35:56', 0, 0, '创新项目', '预计8个月完成，包括数据采集、预处理、分析、可视化等模块', 50, '2026-02-13 08:52:04');
 INSERT INTO `projects` VALUES (3, '智能校园导航系统', '基于微信小程序的智能校园导航系统', 5, 6, 2, 'reviewing', NULL, NULL, NULL, NULL, '2026-01-21 10:07:25', '2026-01-26 14:35:56', 0, 1, '创新项目', '预计4个月完成，包括用户管理、课程管理、学习跟踪等模块', 80, '2026-01-29 08:52:10');
 

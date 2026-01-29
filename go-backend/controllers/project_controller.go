@@ -193,6 +193,51 @@ func (c *ProjectController) UpdateProject(ctx *gin.Context) {
 	})
 }
 
+// CreateExtensionApplication 创建项目延期申请
+func (c *ProjectController) CreateExtensionApplication(ctx *gin.Context) {
+	var req models.ExtensionApplicationRequest
+	if err := ctx.ShouldBind(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"code":    400,
+			"message": "参数错误: " + err.Error(),
+		})
+		return
+	}
+
+	userID, exists := ctx.Get("userID")
+	if !exists {
+		ctx.JSON(http.StatusUnauthorized, gin.H{
+			"code":    401,
+			"message": "未授权访问",
+		})
+		return
+	}
+
+	studentID, ok := userID.(uint)
+	if !ok {
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"code":    500,
+			"message": "用户ID格式错误",
+		})
+		return
+	}
+
+	resp, err := c.projectService.CreateExtensionApplication(studentID, req)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"code":    400,
+			"message": err.Error(),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusCreated, gin.H{
+		"code":    201,
+		"message": "项目延期申请提交成功",
+		"data":    resp,
+	})
+}
+
 // DeleteProject 删除项目
 func (c *ProjectController) DeleteProject(ctx *gin.Context) {
 	idStr := ctx.Param("id")
@@ -218,6 +263,55 @@ func (c *ProjectController) DeleteProject(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, gin.H{
 		"code":    200,
 		"message": "项目删除成功",
+	})
+}
+
+// GetMyExtensionApplications 学生查看我的延期申请
+func (c *ProjectController) GetMyExtensionApplications(ctx *gin.Context) {
+	userID, exists := ctx.Get("userID")
+	if !exists {
+		ctx.JSON(http.StatusUnauthorized, gin.H{
+			"code": 401, "message": "未授权访问",
+		})
+		return
+	}
+
+	studentID := userID.(uint)
+
+	var query models.ExtensionListQuery
+	if err := ctx.ShouldBindQuery(&query); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"code": 400, "message": "参数错误",
+		})
+		return
+	}
+
+	if query.Page <= 0 {
+		query.Page = 1
+	}
+	if query.Size <= 0 || query.Size > 50 {
+		query.Size = 10
+	}
+
+	list, total, err := c.projectService.GetStudentExtensionList(
+		studentID, query,
+	)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"code": 500, "message": err.Error(),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{
+		"code":    200,
+		"message": "查询成功",
+		"data": gin.H{
+			"list":  list,
+			"total": total,
+			"page":  query.Page,
+			"size":  query.Size,
+		},
 	})
 }
 
@@ -577,6 +671,109 @@ func (c *ProjectController) GetTeacherList(ctx *gin.Context) {
 		"code":    200,
 		"message": "获取教师列表成功",
 		"data":    teachers,
+	})
+}
+
+// ApproveExtensionApplication 教师审批延期申请
+func (c *ProjectController) ApproveExtensionApplication(ctx *gin.Context) {
+	var req models.ExtensionApprovalRequest
+	if err := ctx.ShouldBind(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"code":    400,
+			"message": "参数错误: " + err.Error(),
+		})
+		return
+	}
+
+	userID, exists := ctx.Get("userID")
+	if !exists {
+		ctx.JSON(http.StatusUnauthorized, gin.H{
+			"code":    401,
+			"message": "未授权访问",
+		})
+		return
+	}
+
+	teacherID, ok := userID.(uint)
+	if !ok {
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"code":    500,
+			"message": "用户ID格式错误",
+		})
+		return
+	}
+
+	if req.Action == "rejected" && req.Reason == "" {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"code":    400,
+			"message": "驳回延期申请时必须填写原因",
+		})
+		return
+	}
+
+	if err := c.projectService.ApproveExtensionApplication(teacherID, req); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"code":    400,
+			"message": err.Error(),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{
+		"code":    200,
+		"message": "延期申请处理成功",
+	})
+}
+
+// GetTeacherExtensionApplications 教师查看延期申请列表
+func (c *ProjectController) GetTeacherExtensionApplications(ctx *gin.Context) {
+	userID, exists := ctx.Get("userID")
+	if !exists {
+		ctx.JSON(http.StatusUnauthorized, gin.H{
+			"code": 401, "message": "未授权访问",
+		})
+		return
+	}
+
+	teacherID := userID.(uint)
+
+	var query models.ExtensionListQuery
+	if err := ctx.ShouldBindQuery(&query); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"code": 400, "message": "参数错误",
+		})
+		return
+	}
+
+	if query.Page <= 0 {
+		query.Page = 1
+	}
+	if query.Size <= 0 || query.Size > 50 {
+		query.Size = 10
+	}
+	if query.Status == "" {
+		query.Status = "pending"
+	}
+
+	list, total, err := c.projectService.GetTeacherExtensionList(
+		teacherID, query,
+	)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"code": 500, "message": err.Error(),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{
+		"code":    200,
+		"message": "查询成功",
+		"data": gin.H{
+			"list":  list,
+			"total": total,
+			"page":  query.Page,
+			"size":  query.Size,
+		},
 	})
 }
 

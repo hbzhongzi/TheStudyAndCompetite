@@ -74,7 +74,10 @@ func RegisterRoutes(r *gin.Engine, db *gorm.DB) {
 			teachers := auth.Group("/teachers")
 			teachers.Use(middlewares.RoleMiddleware("teacher", "admin"))
 			{
-				teachers.GET("", projectController.GetTeacherList)                                                  // 获取教师列表
+				teachers.GET("", projectController.GetTeacherList)                                               // 获取教师列表
+				teachers.POST("/ApproveExtensionApplication", projectController.ApproveExtensionApplication)     // 审批延期申请
+				teachers.GET("/TeacherExtensionApplications", projectController.GetTeacherExtensionApplications) // 教师查看延期申请列表
+
 				teachers.GET("/filter", projectController.GetTeacherListWithFilter)                                 // 获取教师列表（支持院系筛选）
 				teachers.POST("/bind", projectController.BindStudentTeacher)                                        // 绑定学生和教师
 				teachers.GET("/students", projectController.GetMyStudents)                                          // 获取当前登录教师指导的学生
@@ -153,13 +156,17 @@ func RegisterRoutes(r *gin.Engine, db *gorm.DB) {
 			// 通用项目路由（所有认证用户）
 			projects := auth.Group("/projects")
 			{
-				projects.GET("/my", projectController.GetMyProjects)                // 学生获取我的项目
-				projects.GET("/status", projectController.GetProjectStats)          // 获取项目统计信息
-				projects.PUT("/update", projectController.UpdateProject)            // 更新项目状态
-				projects.GET("/detail", projectController.GetProjectByID)           // 查看项目详情
-				projects.POST("", projectController.CreateProject)                  // 学生创建项目
+				projects.GET("/my", projectController.GetMyProjects)                                   // 学生获取我的项目
+				projects.GET("/status", projectController.GetProjectStats)                             // 获取项目统计信息
+				projects.GET("/detail", projectController.GetProjectByID)                              // 查看项目详情
+				projects.POST("", projectController.CreateProject)                                     // 学生创建项目
+				projects.POST("/extensionapplication", projectController.CreateExtensionApplication)   // 学生申请项目延期
+				projects.GET("/MyExtensionApplications", projectController.GetMyExtensionApplications) // 学生获取我的延期申请
+
 				projects.PUT("/:id", projectController.UpdateProjectWithValidation) // 学生修改草稿项目（带验证）
 				projects.POST("/submit/:id", projectController.SubmitProject)       // 提交项目审核
+
+				projects.PUT("/update", projectController.UpdateProject) // 更新项目状态
 
 				// =============================================
 				// 2. 项目生命周期管理增强路由

@@ -4,19 +4,6 @@
     <!-- 搜索与筛选 -->
     <el-card class="filter-card">
       <el-row :gutter="20">
-        <el-col :span="6">
-          <el-input
-            v-model="query.keyword"
-            placeholder="搜索项目名称"
-            clearable
-            @input="reload"
-          >
-            <template #prefix>
-              <el-icon><Search /></el-icon>
-            </template>
-          </el-input>
-        </el-col>
-
         <el-col :span="4">
           <el-select v-model="query.status" placeholder="项目状态" clearable @change="reload">
             <el-option label="进行中" value="ongoing" />

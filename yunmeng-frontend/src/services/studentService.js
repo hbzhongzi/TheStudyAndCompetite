@@ -126,6 +126,37 @@ export const studentService = {
     }
   },
 
+    /**
+     * 获取我的项目延期申请
+     */
+    async getMyExtensionApplications() {
+    try {
+      const response = await api.get('/projects/MyExtensionApplications')
+      return response
+    } catch (error) {
+      console.error('获取延期申请失败:', error)
+      throw error
+    }
+  },
+
+  
+
+    /**
+   * 创建项目延期申请
+   */
+    async createExtensionApplication(extensionData) {
+    try {
+      const response = await api.post('/projects/extensionapplication', extensionData)
+      return response
+    } catch (error) {
+      console.error('创建延期申请失败:', error)
+      throw error
+    }
+  },
+
+
+
+
   /**
    * 获取项目详情
    */

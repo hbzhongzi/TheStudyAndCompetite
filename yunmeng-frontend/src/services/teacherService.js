@@ -99,14 +99,25 @@ class TeacherService {
   }
 
   // 获取项目审核记录
-  async getProjectReviews(projectId) {
+  async getProjectReviews() {
     try {
-      const response = await api.get(`/projects/${projectId}/reviews`)
+      const response = await api.get(`/teachers/TeacherExtensionApplications`)
       return response
     } catch (error) {
       throw new Error(error.response?.data?.message || '获取审核记录失败')
     }
   }
+
+  //更新项目审核记录
+  async updateProjectReviews(reviewData) {
+    try {
+      const response = await api.post(`/teachers/ApproveExtensionApplication`, reviewData)
+      return response
+    } catch (error) {
+      throw new Error(error.response?.data?.message || '获取审核记录失败')
+    }
+  }
+
 
   // 更新项目进度
   async updateProjectProgress(projectId, progressData) {
@@ -230,15 +241,6 @@ class TeacherService {
     }
   }
 
-  // 新增：项目质量评估
-  async assessProjectQuality(projectId, qualityData) {
-    try {
-      const response = await api.post(`/projects/${projectId}/quality-assessment`, qualityData)
-      return response
-    } catch (error) {
-      throw new Error(error.response?.data?.message || '项目质量评估失败')
-    }
-  }
 
   // 新增：批量通过项目
   async batchApproveProjects(batchData) {
@@ -314,15 +316,6 @@ class TeacherService {
     }
   }
 
-  // 获取项目延期申请列表
-  async getProjectExtensions(projectId, params = {}) {
-    try {
-      const response = await api.get(`/projects/${projectId}/extensions`, { params })
-      return response
-    } catch (error) {
-      throw new Error(error.response?.data?.message || '获取项目延期申请失败')
-    }
-  }
 
   // 获取项目里程碑列表
   async getProjectMilestones(projectId, params = {}) {

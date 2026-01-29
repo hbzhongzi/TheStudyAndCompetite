@@ -207,6 +207,140 @@ func (s *ProjectService) CreateProject(studentID uint, req models.ProjectCreateR
 	return &models.ProjectCreateResponse{ProjectID: project.ID}, nil
 }
 
+// CreateExtensionApplication 创建延期申请
+func (s *ProjectService) CreateExtensionApplication(
+	studentID uint,
+	req models.ExtensionApplicationRequest,
+) (*models.ExtensionApplicationRequest, error) {
+
+	tx := s.db.Begin()
+	if tx.Error != nil {
+		return nil, errors.New("事务启动失败")
+	}
+
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	// 1️⃣ 校验项目是否存在 & 是否属于该学生 & 是否已通过
+	var project models.Project
+	if err := tx.Where(
+		"id = ? AND student_id = ? AND status = ? AND deleted = 0",
+		req.ProjectID,
+		studentID,
+		"approved",
+	).First(&project).Error; err != nil {
+		tx.Rollback()
+		return nil, errors.New("项目不存在或未通过审批，无法申请延期")
+	}
+
+	// 2️⃣ 去重：是否已有待审批延期申请
+	var count int64
+	tx.Model(&models.ProjectExtensionApplication{}).
+		Where("project_id = ? AND status = 'pending'", req.ProjectID).
+		Count(&count)
+
+	if count > 0 {
+		tx.Rollback()
+		return nil, errors.New("该项目已有待审批的延期申请")
+	}
+
+	// 3️⃣ 创建延期申请
+	application := &models.ProjectExtensionApplication{
+		ProjectID:           project.ID,
+		StudentID:           studentID,
+		TeacherID:           project.TeacherID,
+		OriginalFinishTime:  project.FinishTime,
+		RequestedFinishTime: req.RequestedFinishTime,
+		ApplyReason:         req.ApplyReason,
+		Status:              "pending",
+	}
+
+	if err := tx.Create(application).Error; err != nil {
+		tx.Rollback()
+		return nil, errors.New("创建延期申请失败")
+	}
+
+	// 4️⃣ 提交事务
+	if err := tx.Commit().Error; err != nil {
+		return nil, errors.New("提交事务失败")
+	}
+
+	return &models.ExtensionApplicationRequest{
+		ProjectID:           application.ID,
+		RequestedFinishTime: application.RequestedFinishTime,
+		ApplyReason:         application.ApplyReason,
+	}, nil
+}
+
+// GetStudentExtensionList 获取学生的延期申请列表
+func (s *ProjectService) GetStudentExtensionList(
+	studentID uint,
+	query models.ExtensionListQuery,
+) ([]models.ExtensionApplicationListResponse, int64, error) {
+
+	db := s.db.Table("project_extension_applications pea").
+		Joins("LEFT JOIN projects p ON pea.project_id = p.id").
+		Joins("LEFT JOIN users u ON pea.student_id = u.id").
+		Where("pea.student_id = ?", studentID)
+
+	if query.Status != "" {
+		db = db.Where("pea.status = ?", query.Status)
+	}
+	// 1️⃣ 统计总数（只 JOIN 一次）
+	var total int64
+	countDB := s.db.
+		Table("project_extension_applications AS pea").
+		Joins("LEFT JOIN projects p ON pea.project_id = p.id").
+		Where("pea.student_id = ?", studentID)
+
+	if err := countDB.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	// 2️⃣ 查询列表（全新 db 链，重新 JOIN）
+	var list []models.ExtensionApplicationListResponse
+	listDB := s.db.
+		Table("project_extension_applications AS pea").
+		Joins("LEFT JOIN projects p ON pea.project_id = p.id").
+		Joins("LEFT JOIN users t ON pea.teacher_id = t.id").
+		Where("pea.student_id = ?", studentID)
+
+	err := listDB.
+		Select(`
+		pea.id,
+		pea.project_id,
+		p.title AS project_title,
+
+		pea.student_id,
+		NULL AS student_name,
+
+		pea.teacher_id,
+		t.username AS teacher_name,
+
+		pea.original_finish_time,
+		pea.requested_finish_time,
+
+		pea.apply_reason,
+		pea.status,
+		pea.review_reason,
+		pea.reviewed_at,
+		pea.created_at
+	`).
+		Order("pea.created_at DESC").
+		Offset((query.Page - 1) * query.Size).
+		Limit(query.Size).
+		Scan(&list).Error
+
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return list, total, nil
+}
+
 // UpdateProject 更新项目
 func (s *ProjectService) UpdateProject(id uint, studentID uint, req models.ProjectUpdateRequest) error {
 	// 检查项目是否存�?
@@ -717,6 +851,154 @@ func (s *ProjectService) GetTeacherList() ([]models.TeacherListResponse, error) 
 	}
 
 	return responses, nil
+}
+
+// ApproveExtensionApplication 教师审批延期申请
+func (s *ProjectService) ApproveExtensionApplication(
+	teacherID uint,
+	req models.ExtensionApprovalRequest,
+) error {
+
+	tx := s.db.Begin()
+	if tx.Error != nil {
+		return errors.New("事务启动失败")
+	}
+
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	// 1️⃣ 查询延期申请
+	var application models.ProjectExtensionApplication
+	if err := tx.Where(
+		"id = ? AND status = 'pending'",
+		req.ApplicationID,
+	).First(&application).Error; err != nil {
+		tx.Rollback()
+		return errors.New("延期申请不存在或已处理")
+	}
+
+	// 2️⃣ 校验教师权限
+	if application.TeacherID != teacherID {
+		tx.Rollback()
+		return errors.New("无权审批该延期申请")
+	}
+
+	now := time.Now()
+
+	// 3️⃣ 根据审批动作处理
+	switch req.Action {
+
+	case "approved":
+		// 3.1 更新延期申请
+		if err := tx.Model(&application).Updates(map[string]interface{}{
+			"status":      "approved",
+			"reviewed_at": now,
+		}).Error; err != nil {
+			tx.Rollback()
+			return errors.New("审批延期申请失败")
+		}
+
+		// 3.2 同步更新项目完成时间
+		if err := tx.Model(&models.Project{}).
+			Where("id = ?", application.ProjectID).
+			Update("finish_time", application.RequestedFinishTime).
+			Error; err != nil {
+			tx.Rollback()
+			return errors.New("更新项目完成时间失败")
+		}
+
+	case "rejected":
+		// 3.3 驳回延期申请
+		if err := tx.Model(&application).Updates(map[string]interface{}{
+			"status":         "rejected",
+			"reviewed_at":    now,
+			"reviewed_by":    teacherID,
+			"review_comment": req.Reason,
+		}).Error; err != nil {
+			tx.Rollback()
+			return errors.New("驳回延期申请失败")
+		}
+
+	default:
+		tx.Rollback()
+		return errors.New("非法审批操作")
+	}
+
+	// 4️⃣ 提交事务
+	if err := tx.Commit().Error; err != nil {
+		return errors.New("事务提交失败")
+	}
+
+	return nil
+}
+
+// GetTeacherExtensionList 获取教师的延期申请列表
+func (s *ProjectService) GetTeacherExtensionList(
+	teacherID uint,
+	query models.ExtensionListQuery,
+) ([]models.ExtensionApplicationListResponse, int64, error) {
+
+	db := s.db.Table("project_extension_applications pea").
+		Joins("LEFT JOIN projects p ON pea.project_id = p.id").
+		Joins("LEFT JOIN users u ON pea.student_id = u.id").
+		Where("p.teacher_id = ?", teacherID)
+
+	if query.Status != "" {
+		db = db.Where("pea.status = ?", query.Status)
+	}
+	// count
+	var total int64
+	countDB := s.db.
+		Table("project_extension_applications AS pea").
+		Joins("LEFT JOIN projects p ON pea.project_id = p.id").
+		Where("pea.teacher_id = ?", teacherID)
+
+	if err := countDB.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	// list
+	var list []models.ExtensionApplicationListResponse
+	listDB := s.db.
+		Table("project_extension_applications AS pea").
+		Joins("LEFT JOIN projects p ON pea.project_id = p.id").
+		Joins("LEFT JOIN users s ON pea.student_id = s.id").
+		Where("pea.teacher_id = ?", teacherID)
+
+	err := listDB.
+		Select(`
+		pea.id,
+		pea.project_id,
+		p.title AS project_title,
+
+		pea.student_id,
+		s.username AS student_name,
+
+		pea.teacher_id,
+		NULL AS teacher_name,
+
+		pea.original_finish_time,
+		pea.requested_finish_time,
+
+		pea.apply_reason,
+		pea.status,
+		pea.review_reason,
+		pea.reviewed_at,
+		pea.created_at
+	`).
+		Order("pea.created_at DESC").
+		Offset((query.Page - 1) * query.Size).
+		Limit(query.Size).
+		Scan(&list).Error
+
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return list, total, nil
 }
 
 // GetStudentTeachers 获取学生的指导教师列�?

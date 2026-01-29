@@ -41,9 +41,9 @@
                 <span>项目管理</span>
               </template>
               <el-menu-item index="project-overview">项目概览</el-menu-item>
-              <el-menu-item index="project-review">项目审核</el-menu-item>
+              <el-menu-item index="project-review">延期审核</el-menu-item>
               <el-menu-item index="project-files">文件审核</el-menu-item>
-              <el-menu-item index="review-tasks">审核任务</el-menu-item>
+              <el-menu-item index="review-tasks">项目审核</el-menu-item>
             </el-sub-menu>
             <el-menu-item index="students">
               <el-icon><User /></el-icon>
@@ -188,10 +188,7 @@
 
               <TeacherProjectReview />
             </div>
-            <div v-else-if="activeMenu === 'project-milestones'" class="welcome-content">
 
-              <TeacherProjectMilestones />
-            </div>
             <div v-else-if="activeMenu === 'project-files'" class="welcome-content">
 
               <TeacherProjectFiles />
@@ -199,10 +196,6 @@
             <div v-else-if="activeMenu === 'project-extensions'" class="welcome-content">
 
               <TeacherProjectExtensions />
-            </div>
-            <div v-else-if="activeMenu === 'review-tasks'" class="welcome-content">
-    
-              <TeacherReviewTasks />
             </div>
             
             <!-- 其他主要界面 -->
@@ -263,10 +256,9 @@ import ReportView from './ReportView.vue'
 import TeacherProfileView from './TeacherProfileView.vue'
 import TeacherProjectOverview from './TeacherProjectOverview.vue'
 import TeacherProjectReview from './TeacherProjectReview.vue'
-import TeacherProjectMilestones from './TeacherProjectMilestones.vue'
 import TeacherProjectFiles from './TeacherProjectFiles.vue'
 import TeacherProjectExtensions from './TeacherProjectExtensions.vue'
-import TeacherReviewTasks from './TeacherReviewTasks.vue'
+
 
 const router = useRouter()
 const activeMenu = ref('dashboard')

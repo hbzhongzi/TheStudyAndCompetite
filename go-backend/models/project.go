@@ -19,9 +19,9 @@ type Project struct {
 	ApprovedBy      *uint      `gorm:"column:approved_by" json:"approvedBy,omitempty"`
 	RejectionReason string     `gorm:"column:rejection_reason;type:text" json:"rejectionReason"`
 
-	Plan       string     `gorm:"column:plan;type:varchar(255)" json:"plan"`
-	Progress   int        `gorm:"column:progress;default:0" json:"progress"`
-	FinishTime *time.Time `gorm:"column:finish_time" json:"finishTime"`
+	Plan       string    `gorm:"column:plan;type:varchar(255)" json:"plan"`
+	Progress   int       `gorm:"column:progress;default:0" json:"progress"`
+	FinishTime time.Time `gorm:"column:finish_time" json:"finishTime"`
 
 	Deleted    bool `gorm:"column:deleted;default:0" json:"deleted"`
 	IsApproved bool `gorm:"column:is_approved;default:0" json:"isApproved"`
@@ -205,6 +205,79 @@ type ProjectDetailResponse struct {
 		FileURL    string    `json:"fileUrl"`
 		UploadTime time.Time `json:"uploadTime"`
 	} `json:"files"`
+}
+
+// ExtensionApprovalRequest 教师审批延期
+type ExtensionApprovalRequest struct {
+	ApplicationID uint   `json:"applicationId" binding:"required"`
+	Action        string `json:"action" binding:"required,oneof=approved rejected"`
+	Reason        string `json:"reason"`
+}
+
+// ExtensionApplicationRequest 延期申请参数
+type ExtensionApplicationRequest struct {
+	ProjectID           uint      `json:"projectId" binding:"required"`
+	RequestedFinishTime time.Time `json:"requestedFinishTime" binding:"required"`
+	ApplyReason         string    `json:"applyReason" binding:"required"`
+}
+
+// ExtensionListQuery 延期申请列表查询参数
+type ExtensionListQuery struct {
+	Page   int    `form:"page"`
+	Size   int    `form:"size"`
+	Status string `form:"status"`
+}
+
+// ExtensionApplicationListResponse 延期申请列表返回
+type ExtensionApplicationListResponse struct {
+	ID uint `json:"id"`
+
+	ProjectID    uint   `json:"projectId"`
+	ProjectTitle string `json:"projectTitle"`
+
+	StudentID   uint   `json:"studentId"`
+	StudentName string `json:"studentName"`
+
+	TeacherID   uint   `json:"teacherId"`
+	TeacherName string `json:"teacherName"`
+
+	OriginalFinishTime  time.Time `json:"originalFinishTime"`
+	RequestedFinishTime time.Time `json:"requestedFinishTime"`
+
+	ApplyReason string `json:"applyReason"`
+
+	Status       string     `json:"status"`
+	ReviewReason string     `json:"reviewReason"`
+	ReviewedAt   *time.Time `json:"reviewedAt"`
+
+	CreatedAt time.Time `json:"createdAt"`
+}
+
+// ProjectExtensionApplication 项目延期申请
+type ProjectExtensionApplication struct {
+	ID uint `gorm:"primaryKey;autoIncrement" json:"id"`
+
+	ProjectID uint `gorm:"not null;index" json:"projectId"`
+	StudentID uint `gorm:"not null;index" json:"studentId"`
+	TeacherID uint `gorm:"not null;index" json:"teacherId"`
+
+	OriginalFinishTime  time.Time `gorm:"not null" json:"originalFinishTime"`
+	RequestedFinishTime time.Time `gorm:"not null" json:"requestedFinishTime"`
+
+	ApplyReason string `gorm:"type:text;not null" json:"applyReason"`
+
+	Status string `gorm:"type:enum('pending','approved','rejected');default:'pending'" json:"status"`
+
+	ReviewReason string     `gorm:"type:text" json:"reviewReason"`
+	ReviewedAt   *time.Time `json:"reviewedAt"`
+
+	CreatedAt time.Time `json:"createdAt"`
+	UpdatedAt time.Time `json:"updatedAt"`
+
+	// 关联
+	Project *Project `gorm:"foreignKey:ProjectID" json:"project,omitempty"`
+	Student *User    `gorm:"foreignKey:StudentID" json:"student,omitempty"`
+	Teacher *User    `gorm:"foreignKey:TeacherID" json:"teacher,omitempty"`
 }
 
 // ProjectStats 项目统计信息
