@@ -308,6 +308,27 @@ type ProjectQueryParams struct {
 	SortOrder  string `form:"sortOrder"`
 }
 
+// File 文件模型
+type File struct {
+	ID           uint   `gorm:"primaryKey" json:"id"`
+	FileName     string `json:"fileName"`
+	OriginalName string `json:"originalName"`
+	FilePath     string `json:"filePath"`
+	FileSize     int64  `json:"size"`
+	FileExt      string `json:"ext"`
+	MimeType     string `json:"mimeType"`
+	Category     string `json:"category"`
+
+	ProjectID  uint `json:"projectId"`
+	UploadedBy uint `json:"uploadedBy"`
+
+	Status       string `json:"status"`
+	ReviewStatus string `json:"reviewStatus"`
+	Description  string `json:"description"`
+
+	CreatedAt time.Time `json:"createdAt"`
+}
+
 // ProjectExportRequest 项目导出请求
 type ProjectExportRequest struct {
 	Format  string             `json:"format" binding:"required,oneof=excel csv"`

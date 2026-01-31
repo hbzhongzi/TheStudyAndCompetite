@@ -2,12 +2,19 @@
 
 import (
 	"errors"
+	"fmt"
+	"io"
 	"log"
+	"mime/multipart"
+	"os"
+	"path"
 	"strconv"
+	"strings"
 	"time"
 
 	"yunmeng-backend/models"
 
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
@@ -342,6 +349,143 @@ func (s *ProjectService) GetStudentExtensionList(
 	return list, total, nil
 }
 
+/* =========================
+   项目状态校验
+========================= */
+
+func (s *ProjectService) CheckProjectEditable(projectID uint) error {
+	var status string
+	log.Printf("projectID: %d", projectID)
+	err := s.db.
+		Table("projects").
+		Where("id = ?", projectID).
+		Pluck("status", &status).Error
+
+	if err != nil {
+		return err
+	}
+	if status != "approved" {
+		return errors.New("项目未通过审核，禁止上传文件")
+	}
+	return nil
+}
+
+/* =========================
+   文件列表
+========================= */
+
+func (s *ProjectService) GetProjectFiles(
+	projectID uint,
+	userID uint,
+) ([]models.File, error) {
+
+	var files []models.File
+	err := s.db.
+		Where("project_id = ? AND status = 'active'", projectID).
+		Order("created_at DESC").
+		Find(&files).Error
+
+	return files, err
+}
+
+/* =========================
+   上传文件
+========================= */
+
+func (s *ProjectService) SaveProjectFiles(
+	projectID uint,
+	userID uint,
+	files []*multipart.FileHeader,
+) error {
+
+	basePath := fmt.Sprintf("uploads/projects/%d", projectID)
+	if err := os.MkdirAll(basePath, os.ModePerm); err != nil {
+		return err
+	}
+
+	for _, f := range files {
+		ext := path.Ext(f.Filename)
+		newName := uuid.New().String() + ext
+		fullPath := path.Join(basePath, newName)
+
+		if err := saveUploadedFile(f, fullPath); err != nil {
+			return err
+		}
+
+		record := models.File{
+			FileName:     newName,
+			OriginalName: f.Filename,
+			FilePath:     fullPath,
+			FileSize:     f.Size,
+			FileExt:      ext,
+			UploadedBy:   userID,
+			ProjectID:    projectID,
+			CreatedAt:    time.Now(),
+		}
+
+		if err := s.db.Create(&record).Error; err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+/* =========================
+   删除文件（软删除）
+========================= */
+
+func (s *ProjectService) DeleteProjectFile(
+	fileID uint,
+	userID uint,
+) error {
+
+	res := s.db.Model(&models.File{}).
+		Where("id = ? AND uploaded_by = ?", fileID, userID).
+		Update("file_path", gorm.Expr("file_path"))
+
+	if res.RowsAffected == 0 {
+		return errors.New("无权限或文件不存在")
+	}
+	return res.Error
+}
+
+/* =========================
+   工具函数
+========================= */
+
+func saveUploadedFile(file *multipart.FileHeader, dst string) error {
+	src, err := file.Open()
+	if err != nil {
+		return err
+	}
+	defer src.Close()
+
+	out, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+
+	_, err = io.Copy(out, src)
+	return err
+}
+
+func detectCategory(ext string) string {
+	switch strings.ToLower(ext) {
+	case ".pdf", ".doc", ".docx":
+		return "document"
+	case ".jpg", ".png":
+		return "image"
+	case ".zip", ".rar":
+		return "archive"
+	case ".mp4":
+		return "video"
+	default:
+		return "other"
+	}
+}
+
 // UpdateProject 更新项目
 func (s *ProjectService) UpdateProject(id uint, studentID uint, req models.ProjectUpdateRequest) error {
 	// 检查项目是否存�?
@@ -598,16 +742,6 @@ func (s *ProjectService) GetProjectStats(userID uint) (*ProjectStats, error) {
 	s.db.Table("projects").
 		Where("student_id = ? AND status = ?", userID, "pending").
 		Count(&stats.PendingProjects)
-
-	// 竞赛总数
-	s.db.Table("competitions").
-		Where("student_id = ?", userID).
-		Count(&stats.TotalCompetitions)
-
-	// 活跃竞赛
-	s.db.Table("competitions").
-		Where("student_id = ? AND status = ?", userID, "active").
-		Count(&stats.ActiveCompetitions)
 
 	return stats, nil
 }

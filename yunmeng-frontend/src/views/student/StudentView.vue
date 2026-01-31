@@ -41,7 +41,7 @@
                 <span>项目管理</span>
               </template>
               <el-menu-item index="project-overview">项目概览</el-menu-item>
-              <el-menu-item index="project-files">文件管理</el-menu-item>
+              <el-menu-item index="project-files">项目详情</el-menu-item>
               <el-menu-item index="project-extensions">延期申请</el-menu-item>
               <el-menu-item index="project-progress">进度跟踪</el-menu-item>
             </el-sub-menu>

@@ -63,6 +63,23 @@ export const studentService = {
     }
   },
 
+
+
+  /**
+   * 获取项目详情
+   */
+  async getProjectDetail(projectId) {
+    try {
+      const response = await api.get(`/student/projects/detail/${projectId}`)
+      return response
+    } catch (error) {
+      console.error('获取项目详情失败:', error)
+      throw error
+    }
+  },
+
+
+
   /**
    * 获取项目统计数据
    */
@@ -157,18 +174,6 @@ export const studentService = {
 
 
 
-  /**
-   * 获取项目详情
-   */
-  async getProjectDetail(projectId) {
-    try {
-      const response = await api.get(`/student/projects/${projectId}`)
-      return response
-    } catch (error) {
-      console.error('获取项目详情失败:', error)
-      throw error
-    }
-  },
 
   /**
    * 提交项目审核

@@ -315,6 +315,107 @@ func (c *ProjectController) GetMyExtensionApplications(ctx *gin.Context) {
 	})
 }
 
+/* =========================
+   获取项目文件列表
+========================= */
+
+func (c *ProjectController) GetFiles(ctx *gin.Context) {
+	projectID, _ := strconv.Atoi(ctx.Query("id"))
+	userID, exists := ctx.Get("userID")
+	if !exists {
+		ctx.JSON(http.StatusUnauthorized, gin.H{
+			"code":    401,
+			"message": "未授权访问",
+		})
+		return
+	}
+
+	list, err := c.projectService.GetProjectFiles(uint(projectID), userID.(uint))
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"message": err.Error(),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{
+		"data": list,
+	})
+}
+
+/* =========================
+   上传项目文件
+========================= */
+
+func (c *ProjectController) UploadFiles(ctx *gin.Context) {
+	projectID, _ := strconv.Atoi(ctx.PostForm("id"))
+	userID, exists := ctx.Get("userID")
+	if !exists {
+		ctx.JSON(http.StatusUnauthorized, gin.H{
+			"code":    401,
+			"message": "未授权访问",
+		})
+		return
+	}
+	if err := c.projectService.CheckProjectEditable(uint(projectID)); err != nil {
+		ctx.JSON(http.StatusForbidden, gin.H{
+			"message": err.Error(),
+		})
+		return
+	}
+
+	form, err := ctx.MultipartForm()
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"message": "文件解析失败",
+		})
+		return
+	}
+
+	files := form.File["files"]
+	if len(files) == 0 {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"message": "未选择文件",
+		})
+		return
+	}
+
+	if err := c.projectService.SaveProjectFiles(
+		uint(projectID),
+		userID.(uint),
+		files,
+	); err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"message": err.Error(),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{
+		"message": "上传成功",
+	})
+}
+
+/* =========================
+   删除文件
+========================= */
+
+func (c *ProjectController) DeleteFile(ctx *gin.Context) {
+	fileID, _ := strconv.Atoi(ctx.Query("fileId"))
+	userID := ctx.GetUint("user_id")
+
+	if err := c.projectService.DeleteProjectFile(uint(fileID), userID); err != nil {
+		ctx.JSON(http.StatusForbidden, gin.H{
+			"message": err.Error(),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{
+		"message": "删除成功",
+	})
+}
+
 // ReviewProject 审核项目
 func (c *ProjectController) ReviewProject(ctx *gin.Context) {
 	idStr := ctx.Param("id")

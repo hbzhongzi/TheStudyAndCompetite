@@ -11,7 +11,7 @@
  Target Server Version : 80043 (8.0.43)
  File Encoding         : 65001
 
- Date: 29/01/2026 17:23:46
+ Date: 31/01/2026 17:46:48
 */
 
 SET NAMES utf8mb4;
@@ -290,28 +290,36 @@ INSERT INTO `competitions` VALUES (2, '全国大学生数学建模竞赛（国�
 DROP TABLE IF EXISTS `files`;
 CREATE TABLE `files`  (
   `id` bigint NOT NULL AUTO_INCREMENT COMMENT '文件ID',
-  `file_name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '文件名',
+  `file_name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '服务器保存文件名',
   `original_name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '原始文件名',
-  `file_path` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '文件路径',
-  `file_size` bigint NOT NULL COMMENT '文件大小',
-  `file_type` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT '文件类型',
+  `file_path` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '文件存储路径',
+  `file_size` bigint NOT NULL COMMENT '文件大小（字节）',
+  `file_ext` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT '文件扩展名',
   `mime_type` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT 'MIME类型',
+  `category` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '业务分类(document/image/video/code/other)',
+  `project_id` bigint NOT NULL COMMENT '所属项目ID',
   `uploaded_by` bigint NOT NULL COMMENT '上传者ID',
-  `related_type` enum('project','competition','user') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT '关联类型',
-  `related_id` bigint NULL DEFAULT NULL COMMENT '关联ID',
+  `status` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'active' COMMENT '状态(active/deleted/rejected)',
+  `review_status` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT 'approved' COMMENT '审核状态(pending/approved/rejected)',
+  `description` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT '文件描述',
+  `deleted_at` datetime NULL DEFAULT NULL COMMENT '删除时间',
   `created_at` datetime NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `updated_at` datetime NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (`id`) USING BTREE,
+  INDEX `idx_files_project_id`(`project_id` ASC) USING BTREE,
   INDEX `idx_files_uploaded_by`(`uploaded_by` ASC) USING BTREE,
-  INDEX `idx_files_related_type`(`related_type` ASC) USING BTREE,
-  INDEX `idx_files_related_id`(`related_id` ASC) USING BTREE,
+  INDEX `idx_files_category`(`category` ASC) USING BTREE,
+  INDEX `idx_files_status`(`status` ASC) USING BTREE,
+  INDEX `idx_files_review_status`(`review_status` ASC) USING BTREE,
   INDEX `idx_files_created_at`(`created_at` ASC) USING BTREE,
-  INDEX `idx_files_file_type`(`file_type` ASC) USING BTREE,
-  CONSTRAINT `files_ibfk_1` FOREIGN KEY (`uploaded_by`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT
-) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '文件表' ROW_FORMAT = Dynamic;
+  CONSTRAINT `fk_files_project` FOREIGN KEY (`project_id`) REFERENCES `projects` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT,
+  CONSTRAINT `fk_files_user` FOREIGN KEY (`uploaded_by`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT
+) ENGINE = InnoDB AUTO_INCREMENT = 5 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '项目文件表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of files
 -- ----------------------------
+INSERT INTO `files` VALUES (4, '8737dba1-1ec1-4932-822b-b99f84aafac0.jpg', '啦啦啦.jpg', 'uploads/projects/1/8737dba1-1ec1-4932-822b-b99f84aafac0.jpg', 196958, '.jpg', '', '', 1, 4, 'active', '', '', NULL, '2026-01-31 16:45:23', '2026-01-31 17:09:30');
 
 -- ----------------------------
 -- Table structure for login_logs

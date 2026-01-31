@@ -163,6 +163,10 @@ func RegisterRoutes(r *gin.Engine, db *gorm.DB) {
 				projects.POST("/extensionapplication", projectController.CreateExtensionApplication)   // 学生申请项目延期
 				projects.GET("/MyExtensionApplications", projectController.GetMyExtensionApplications) // 学生获取我的延期申请
 
+				projects.GET("/files/getfiles", projectController.GetFiles)        // 获取项目成果文件列表
+				projects.POST("/files/uploadfiles", projectController.UploadFiles) // 上传项目成果文件
+				projects.DELETE("/files/delete", projectController.DeleteFile)     // 删除项目成果文件
+
 				projects.PUT("/:id", projectController.UpdateProjectWithValidation) // 学生修改草稿项目（带验证）
 				projects.POST("/submit/:id", projectController.SubmitProject)       // 提交项目审核
 

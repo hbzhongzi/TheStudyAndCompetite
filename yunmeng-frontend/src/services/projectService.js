@@ -63,6 +63,38 @@ class ProjectService {
     }
   }
 
+
+
+// 获取项目文件列表
+async getProjectFiles(projectId) {
+  if (!projectId) throw new Error('项目ID不能为空')
+  return api.get(`/projects/${projectId}/files`)
+}
+
+// 上传项目文件
+async uploadProjectFiles(projectId, files = []) {
+  if (!projectId) throw new Error('项目ID不能为空')
+
+  const formData = new FormData()
+  files.forEach(file => formData.append('files', file))
+
+  return api.post(`/projects/${projectId}/files`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  })
+}
+
+// 删除项目文件（支持批量）
+async deleteProjectFile(projectId, fileIds = []) {
+  if (!projectId) throw new Error('项目ID不能为空')
+  if (!fileIds.length) throw new Error('文件ID不能为空')
+
+  return api.delete(`/projects/${projectId}/files`, {
+    data: { fileIds }
+  })
+}
+
+
+
   // 获取项目详情
   async getProjectDetail(projectId) {
     try {
@@ -296,16 +328,6 @@ class ProjectService {
     }
   }
 
-  // 获取项目分类树
-  async getProjectTypeTree() {
-    try {
-      const response = await api.get('/admin/projects/types/tree')
-      return response
-    } catch (error) {
-      throw new Error(error.response?.data?.message || '获取项目分类树失败')
-    }
-  }
-
   // 获取项目分类统计
   async getProjectTypeStats() {
     try {
@@ -514,25 +536,6 @@ class ProjectService {
   }
 }
 
-// 文件上传服务类
-class FileService {
-  // 上传文件
-  async uploadFile(file) {
-    try {
-      const formData = new FormData()
-      formData.append('file', file)
-      
-      const response = await api.post('/files/upload', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data'
-        }
-      })
-      return response
-    } catch (error) {
-      throw new Error(error.response?.data?.message || '文件上传失败')
-    }
-  }
-}
+
 
 export const projectService = new ProjectService()
-export const fileService = new FileService() 
