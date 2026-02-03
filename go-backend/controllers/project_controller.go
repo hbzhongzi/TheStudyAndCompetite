@@ -401,10 +401,17 @@ func (c *ProjectController) UploadFiles(ctx *gin.Context) {
 ========================= */
 
 func (c *ProjectController) DeleteFile(ctx *gin.Context) {
+	projectID, _ := strconv.Atoi(ctx.Query("id"))
 	fileID, _ := strconv.Atoi(ctx.Query("fileId"))
-	userID := ctx.GetUint("user_id")
-
-	if err := c.projectService.DeleteProjectFile(uint(fileID), userID); err != nil {
+	userID, exists := ctx.Get("userID")
+	if !exists {
+		ctx.JSON(http.StatusUnauthorized, gin.H{
+			"code":    401,
+			"message": "未授权访问",
+		})
+		return
+	}
+	if err := c.projectService.DeleteProjectFile(uint(fileID), userID.(uint), uint(projectID)); err != nil {
 		ctx.JSON(http.StatusForbidden, gin.H{
 			"message": err.Error(),
 		})

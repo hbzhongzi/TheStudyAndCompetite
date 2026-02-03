@@ -1,8 +1,28 @@
 <template>
   <div class="project-detail">
 
-    <!-- 项目基本信息 -->
+    <!-- 项目选择 -->
     <el-card class="mb-20">
+      <div class="project-select">
+        <span class="label">选择项目：</span>
+        <el-select
+          v-model="projectId"
+          placeholder="请选择项目"
+          style="width: 300px"
+          @change="handleProjectChange"
+        >
+          <el-option
+            v-for="item in projects"
+            :key="item.id"
+            :label="item.title"
+            :value="item.id"
+          />
+        </el-select>
+      </div>
+    </el-card>
+
+    <!-- 项目基本信息 -->
+    <el-card class="mb-20" v-if="project.id">
       <template #header>
         <span>项目详情</span>
       </template>
@@ -16,10 +36,6 @@
           {{ project.type }}
         </el-descriptions-item>
 
-        <el-descriptions-item label="指导教师">
-          {{ project.teacherName || '—' }}
-        </el-descriptions-item>
-
         <el-descriptions-item label="项目状态">
           <el-tag :type="statusType(project.status)">
             {{ statusText(project.status) }}
@@ -28,10 +44,6 @@
 
         <el-descriptions-item label="创建时间">
           {{ formatDateTime(project.createdAt) }}
-        </el-descriptions-item>
-
-        <el-descriptions-item label="预计完成时间">
-          {{ project.finishedAt || '—' }}
         </el-descriptions-item>
       </el-descriptions>
 
@@ -44,11 +56,11 @@
       />
     </el-card>
 
-    <!-- 文件管理 -->
+    <!-- 项目成果文件 -->
     <el-card>
       <template #header>
         <div class="header-content">
-          <span>项目文件</span>
+          <span>项目成果文件</span>
           <el-button
             v-if="canEdit"
             type="primary"
@@ -64,9 +76,13 @@
         v-loading="loading"
         border
       >
-        <el-table-column prop="name" label="文件名" min-width="200" />
+        <el-table-column
+          prop="originalName"
+          label="文件名"
+          min-width="220"
+        />
 
-        <el-table-column prop="category" label="类型" width="120">
+        <el-table-column label="类型" width="120">
           <template #default="{ row }">
             <el-tag size="small">
               {{ categoryLabel(row.category) }}
@@ -76,17 +92,18 @@
 
         <el-table-column label="大小" width="120">
           <template #default="{ row }">
-            {{ formatFileSize(row.size) }}
+            {{ formatFileSize(row.fileSize) }}
           </template>
         </el-table-column>
 
-        <el-table-column prop="createdAt" label="上传时间" width="160" />
-
-        <el-table-column label="操作" width="240">
+        <el-table-column label="上传时间" width="170">
           <template #default="{ row }">
-            <el-button size="small" @click="previewFile(row)">
-              预览
-            </el-button>
+            {{ formatDateTime(row.createdAt) }}
+          </template>
+        </el-table-column>
+
+        <el-table-column label="操作" width="220">
+          <template #default="{ row }">
             <el-button size="small" type="primary" @click="downloadFile(row)">
               下载
             </el-button>
@@ -104,23 +121,18 @@
 
       <el-empty
         v-if="!loading && files.length === 0"
-        description="暂无项目文件"
+        description="暂无项目成果文件"
       />
     </el-card>
 
-    <!-- 上传文件弹窗 -->
-    <el-dialog
-      v-model="uploadDialogVisible"
-      title="上传文件"
-      width="500px"
-    >
+    <!-- 上传文件 -->
+    <el-dialog v-model="uploadDialogVisible" title="上传文件" width="500px">
       <el-upload
         drag
         multiple
         :auto-upload="false"
         :on-change="handleFileChange"
       >
-        <el-icon><Upload /></el-icon>
         <div class="el-upload__text">
           点击或拖拽文件到此处上传
         </div>
@@ -139,13 +151,12 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { projectService } from '@/services/projectService'
 
-const route = useRoute()
-const projectId = Number(route.params.id)
-
+/* ========= state ========= */
+const projects = ref([])
+const projectId = ref(null)
 const project = ref({})
 const files = ref([])
 const loading = ref(false)
@@ -156,30 +167,22 @@ const uploadFiles = ref([])
 /* ========= 权限 ========= */
 const canEdit = computed(() => project.value.status === 'approved')
 
-/* ========= 状态显示 ========= */
-const statusType = (status) => {
-  switch (status) {
-    case 'approved': return 'success'
-    case 'pending': return 'warning'
-    case 'rejected': return 'danger'
-    default: return 'info'
-  }
-}
+/* ========= 状态 ========= */
+const statusType = (status) =>
+  status === 'approved' ? 'success'
+    : status === 'pending' ? 'warning'
+      : status === 'rejected' ? 'danger'
+        : 'info'
 
-const statusText = (status) => {
-  switch (status) {
-    case 'approved': return '已通过'
-    case 'pending': return '审核中'
-    case 'rejected': return '已驳回'
-    default: return '未知'
-  }
-}
+const statusText = (status) =>
+  status === 'approved' ? '已通过'
+    : status === 'pending' ? '审核中'
+      : status === 'rejected' ? '已驳回'
+        : '未知'
 
-/* ========= 工具方法 ========= */
-const formatDateTime = (time) => {
-  if (!time) return '—'
-  return new Date(time).toLocaleString()
-}
+/* ========= 工具 ========= */
+const formatDateTime = (time) =>
+  time ? new Date(time).toLocaleString() : '—'
 
 const formatFileSize = (size) => {
   if (!size) return '0 KB'
@@ -188,28 +191,51 @@ const formatFileSize = (size) => {
   return (size / 1024 / 1024).toFixed(1) + ' MB'
 }
 
-const categoryLabel = (val) => {
-  const map = {
-    document: '文档',
-    image: '图片',
-    video: '视频',
-    code: '代码',
-    other: '其他'
-  }
-  return map[val] || '未知'
-}
+const categoryLabel = (val) => ({
+  document: '文档',
+  image: '图片',
+  video: '视频',
+  other: '其他'
+}[val] || '未知')
 
 /* ========= 数据加载 ========= */
-const loadProject = async () => {
-  const res = await projectService.getProjectDetail(projectId)
+
+// 1️⃣ 获取我的项目
+const loadMyProjects = async () => {
+  const res = await projectService.getMyProjects()
+  const list = res.data?.list || []
+
+  if (list.length === 0) {
+    ElMessage.warning('暂无项目')
+    return
+  }
+
+  projects.value = list
+  projectId.value = list[0].id // ✅ 默认第一个
+}
+
+// 2️⃣ 加载详情
+const loadProjectDetail = async () => {
+  if (!projectId.value) return
+  const res = await projectService.getProjectDetail(projectId.value)
   project.value = res.data || {}
 }
 
+// 3️⃣ 加载文件
 const loadFiles = async () => {
+  if (!projectId.value) return
   loading.value = true
-  const res = await projectService.getProjectFiles(projectId)
+  const res = await projectService.getProjectFiles(projectId.value)
   files.value = res.data || []
   loading.value = false
+}
+
+/* ========= 项目切换 ========= */
+const handleProjectChange = async () => {
+  project.value = {}
+  files.value = []
+  await loadProjectDetail()
+  await loadFiles()
 }
 
 /* ========= 上传 ========= */
@@ -219,7 +245,7 @@ const openUpload = () => {
 }
 
 const handleFileChange = (file) => {
-  uploadFiles.value = [file.raw]
+  uploadFiles.value.push(file.raw)
 }
 
 const submitUpload = async () => {
@@ -227,7 +253,7 @@ const submitUpload = async () => {
     ElMessage.warning('请选择文件')
     return
   }
-  await projectService.uploadProjectFiles(projectId, uploadFiles.value)
+  await projectService.uploadProjectFiles(projectId.value, uploadFiles.value)
   ElMessage.success('上传成功')
   uploadDialogVisible.value = false
   loadFiles()
@@ -237,24 +263,22 @@ const submitUpload = async () => {
 const deleteFile = (file) => {
   ElMessageBox.confirm('确认删除该文件？', '提示', { type: 'warning' })
     .then(async () => {
-      await projectService.deleteProjectFile(projectId, [file.id])
+      await projectService.deleteProjectFile(projectId.value, file.id)
       ElMessage.success('删除成功')
       loadFiles()
     })
 }
 
-/* ========= 占位操作 ========= */
-const previewFile = (file) => {
-  ElMessage.info('预览功能可后续扩展')
-}
-
+/* ========= 下载 ========= */
 const downloadFile = (file) => {
-  window.open(file.url, '_blank')
+  window.open('/' + file.filePath)
 }
 
-onMounted(() => {
-  loadProject()
-  loadFiles()
+/* ========= 生命周期 ========= */
+onMounted(async () => {
+  await loadMyProjects()
+  await loadProjectDetail()
+  await loadFiles()
 })
 </script>
 
@@ -265,6 +289,16 @@ onMounted(() => {
 
 .mb-20 {
   margin-bottom: 20px;
+}
+
+.project-select {
+  display: flex;
+  align-items: center;
+}
+
+.project-select .label {
+  margin-right: 10px;
+  font-weight: 500;
 }
 
 .header-content {

@@ -438,16 +438,50 @@ func (s *ProjectService) SaveProjectFiles(
 func (s *ProjectService) DeleteProjectFile(
 	fileID uint,
 	userID uint,
+	projectID uint,
 ) error {
 
-	res := s.db.Model(&models.File{}).
-		Where("id = ? AND uploaded_by = ?", fileID, userID).
-		Update("file_path", gorm.Expr("file_path"))
+	// 1. 先检查文件是否存在且属于该项目
+	var file models.File
+	err := s.db.Where("id = ? AND project_id = ?", fileID, projectID).
+		First(&file).Error
 
-	if res.RowsAffected == 0 {
-		return errors.New("无权限或文件不存在")
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return errors.New("文件不存在或不属于该项目")
+		}
+		return err
 	}
-	return res.Error
+
+	// 2. 权限检查：文件上传者可以删除
+	canDelete := false
+
+	// 方式1：直接检查文件的上传者
+	if file.UploadedBy == userID {
+		canDelete = true
+	}
+
+	// 3. 执行软删除（设置 deleted_at）
+	if !canDelete {
+		return errors.New("无删除权限")
+	}
+	// 3. 执行软删除（设置 deleted_at）
+	now := time.Now()
+	result := s.db.Model(&models.File{}).
+		Where("id = ?", fileID).
+		Updates(map[string]interface{}{
+			"deleted_at": &now, // 设置当前时间
+		})
+
+	if result.Error != nil {
+		return result.Error
+	}
+
+	if result.RowsAffected == 0 {
+		return errors.New("删除失败")
+	}
+
+	return nil
 }
 
 /* =========================
