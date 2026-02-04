@@ -78,6 +78,17 @@ class TeacherService {
     }
   }
 
+//获得指定学生项目的文件列表
+  async getStudentProjectsFiles(studentId, params = {}) {
+    try{
+      const response = await api.get(`/teachers/Stufiles`, { params })
+      return response
+    } catch (error) {
+      throw new Error(error.response?.data?.message || '获取学生项目文件列表失败')
+    }
+  }
+
+
   // 获取项目详情
   async getProjectDetail(projectId) {
     try {

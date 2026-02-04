@@ -104,18 +104,6 @@ async getProjectFiles(projectId) {
   return api.get(`/projects/files/getfiles?id=${projectId}`)
 }
 
-// 上传项目文件
-async uploadProjectFiles(projectId, files = []) {
-  if (!projectId) throw new Error('项目ID不能为空')
-
-  const formData = new FormData()
-  files.forEach(file => formData.append('files', file))
-
-  return api.post(`/projects/${projectId}/files`, formData, {
-    headers: { 'Content-Type': 'multipart/form-data' }
-  })
-}
-
 
 
   // 获取项目审核记录
@@ -188,17 +176,22 @@ async uploadProjectFiles(projectId, files = []) {
   }
 
   // 提交项目审核
-  async submitProject(projectId) {
+  async submitProject(id) {
     try {
-      if (!projectId) {
+      if (!id) {
         throw new Error('项目ID不能为空')
       }
-      const response = await api.post(`/projects/submit/${projectId}`)
+        // 使用 FormData
+        const formData = new FormData()
+        formData.append('id', id)
+
+      const response = await api.post(`/projects/submit`, formData)
       return response
     } catch (error) {
       throw new Error(error.response?.data?.message || '提交项目审核失败')
     }
   }
+
 
   // 获取项目统计信息
   async getProjectStats() {
@@ -233,18 +226,7 @@ async uploadProjectFiles(projectId, files = []) {
     }
   }
 
-  // 软删除项目
-  async softDeleteProject(projectId) {
-    try {
-      if (!projectId) {
-        throw new Error('项目ID不能为空')
-      }
-      const response = await api.delete(`/admin/projects/${projectId}/soft`)
-      return response
-    } catch (error) {
-      throw new Error(error.response?.data?.message || '软删除项目失败')
-    }
-  }
+
 
   // 恢复软删除的项目
   async restoreProject(projectId) {

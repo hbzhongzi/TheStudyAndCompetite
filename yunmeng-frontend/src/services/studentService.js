@@ -79,6 +79,23 @@ export const studentService = {
   },
 
 
+  //删除项目
+  async deleteProject(id) {
+    try {
+      if (!id) {
+        throw new Error('项目ID不能为空')
+      }
+       // 使用 FormData
+        const formData = new FormData()
+        formData.append('id', id)
+      const response = await api.delete(`/projects/delete`, { data: formData })
+      return response
+    } catch (error) {
+      throw new Error(error.response?.data?.message || '删除项目失败')
+    }
+  },
+
+
 
   /**
    * 获取项目统计数据
@@ -130,18 +147,7 @@ export const studentService = {
     }
   },
 
-  /**
-   * 删除项目
-   */
-  async deleteProject(projectId) {
-    try {
-      const response = await api.delete(`/student/projects/${projectId}`)
-      return response
-    } catch (error) {
-      console.error('删除项目失败:', error)
-      throw error
-    }
-  },
+
 
     /**
      * 获取我的项目延期申请

@@ -140,7 +140,58 @@
       </template>
     </el-dialog>
   </div>
+
+<!-- 查看延期申请 -->
+<el-dialog v-model="viewVisible" title="延期申请详情" width="600px">
+  <el-descriptions border :column="2">
+    <el-descriptions-item label="项目名称">
+      {{ viewRow.projectTitle }}
+    </el-descriptions-item>
+
+    <el-descriptions-item label="学生">
+      {{ viewRow.studentName }}
+    </el-descriptions-item>
+
+    <el-descriptions-item label="原截止时间">
+      {{ formatTime(viewRow.originalFinishTime) }}
+    </el-descriptions-item>
+
+    <el-descriptions-item label="申请截止时间">
+      {{ formatTime(viewRow.requestedFinishTime) }}
+    </el-descriptions-item>
+
+    <el-descriptions-item label="申请时间">
+      {{ formatTime(viewRow.createdAt) }}
+    </el-descriptions-item>
+
+    <el-descriptions-item label="状态">
+      <el-tag :type="statusType(viewRow.status)">
+        {{ statusLabel(viewRow.status) }}
+      </el-tag>
+    </el-descriptions-item>
+
+    <el-descriptions-item label="申请理由" :span="2">
+      {{ viewRow.applyReason || '—' }}
+    </el-descriptions-item>
+
+    <el-descriptions-item
+      v-if="viewRow.status !== 'pending'"
+      label="审核意见"
+      :span="2"
+    >
+      {{ viewRow.reviewReason || '—' }}
+    </el-descriptions-item>
+  </el-descriptions>
+
+  <template #footer>
+    <el-button type="primary" @click="viewVisible = false">
+      确定
+    </el-button>
+  </template>
+</el-dialog>
+
 </template>
+
 
 <script setup>
 import { ref, onMounted } from 'vue'
@@ -148,12 +199,11 @@ import { ElMessage } from 'element-plus'
 import { Search } from '@element-plus/icons-vue'
 import { teacherService } from '@/services/teacherService'
 
-// 表格数据
+/* ========= 表格 ========= */
 const list = ref([])
 const total = ref(0)
 const loading = ref(false)
 
-// 查询条件
 const query = ref({
   page: 1,
   size: 10,
@@ -161,26 +211,28 @@ const query = ref({
   keyword: ''
 })
 
-// 统计
+/* ========= 统计 ========= */
 const stats = ref([
   { label: '待审核', value: 0 },
   { label: '已通过', value: 0 },
   { label: '已拒绝', value: 0 }
 ])
 
-// 审核弹窗
+/* ========= 审核 ========= */
 const reviewVisible = ref(false)
 const currentRow = ref(null)
 const reviewStatus = ref('')
 const reviewReason = ref('')
 
-// 获取列表
+/* ========= 查看 ========= */
+const viewVisible = ref(false)
+const viewRow = ref({})
+
+/* ========= 获取列表 ========= */
 const fetchList = async () => {
   loading.value = true
   try {
     const res = await teacherService.getProjectReviews(query.value)
-
-    // ⚠️ 关键修复点
     list.value = res.data.list || []
     total.value = res.data.total || 0
 
@@ -192,25 +244,26 @@ const fetchList = async () => {
   }
 }
 
-// 状态显示
+/* ========= 状态 ========= */
 const statusLabel = s =>
   s === 'pending' ? '待审核' : s === 'approved' ? '已通过' : '已拒绝'
 
 const statusType = s =>
   s === 'pending' ? 'warning' : s === 'approved' ? 'success' : 'danger'
 
-// 时间格式化
+/* ========= 时间 ========= */
 const formatTime = t => {
   if (!t) return '-'
   return t.replace('T', ' ').substring(0, 19)
 }
 
-// 查看
+/* ========= 查看 ========= */
 const view = row => {
-  ElMessage.info(`查看项目：${row.projectTitle}`)
+  viewRow.value = row
+  viewVisible.value = true
 }
 
-// 打开审核
+/* ========= 审核 ========= */
 const openReview = (row, status) => {
   currentRow.value = row
   reviewStatus.value = status
@@ -218,7 +271,6 @@ const openReview = (row, status) => {
   reviewVisible.value = true
 }
 
-// 提交审核
 const submitReview = async () => {
   await teacherService.updateProjectReviews({
     ApplicationID: currentRow.value.id,

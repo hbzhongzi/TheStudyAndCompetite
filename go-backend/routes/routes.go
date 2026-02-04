@@ -77,13 +77,16 @@ func RegisterRoutes(r *gin.Engine, db *gorm.DB) {
 				teachers.GET("", projectController.GetTeacherList)                                               // 获取教师列表
 				teachers.POST("/ApproveExtensionApplication", projectController.ApproveExtensionApplication)     // 审批延期申请
 				teachers.GET("/TeacherExtensionApplications", projectController.GetTeacherExtensionApplications) // 教师查看延期申请列表
+				teachers.GET("/Stufiles", projectController.GetStudentProjectsFiles)                             // 获取指定学生的项目对应的文件列表
 
 				teachers.GET("/filter", projectController.GetTeacherListWithFilter)                                 // 获取教师列表（支持院系筛选）
 				teachers.POST("/bind", projectController.BindStudentTeacher)                                        // 绑定学生和教师
 				teachers.GET("/students", projectController.GetMyStudents)                                          // 获取当前登录教师指导的学生
 				teachers.GET("/students/:studentId", projectController.GetStudentTeachers)                          // 获取学生的指导教师
 				teachers.DELETE("/students/:studentId/teachers/:teacherId", projectController.UnbindStudentTeacher) // 解绑学生和教师
-				teachers.GET("/projects", projectController.GetTeacherProjects)                                     // 获取当前登录教师的所有指导项目
+
+				teachers.GET("/projects", projectController.GetTeacherProjects) // 获取当前登录教师的所有指导项目
+
 			}
 
 			// 教师/管理员项目路由
@@ -160,6 +163,8 @@ func RegisterRoutes(r *gin.Engine, db *gorm.DB) {
 				projects.GET("/status", projectController.GetProjectStats)                             // 获取项目统计信息
 				projects.GET("/detail", projectController.GetProjectByID)                              // 查看项目详情
 				projects.POST("", projectController.CreateProject)                                     // 学生创建项目
+				projects.DELETE("/delete", projectController.DeleteProject)                            // 学生删除项目
+				projects.POST("/submit", projectController.SubmitProject)                              // 学生提交项目审核项目
 				projects.POST("/extensionapplication", projectController.CreateExtensionApplication)   // 学生申请项目延期
 				projects.GET("/MyExtensionApplications", projectController.GetMyExtensionApplications) // 学生获取我的延期申请
 

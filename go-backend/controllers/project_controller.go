@@ -240,8 +240,8 @@ func (c *ProjectController) CreateExtensionApplication(ctx *gin.Context) {
 
 // DeleteProject 删除项目
 func (c *ProjectController) DeleteProject(ctx *gin.Context) {
-	idStr := ctx.Param("id")
-	id, err := strconv.ParseUint(idStr, 10, 32)
+	projectID, _ := strconv.Atoi(ctx.PostForm("id"))
+	id, err := strconv.ParseUint(strconv.Itoa(projectID), 10, 32)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{
 			"code":    400,
@@ -604,8 +604,8 @@ func (c *ProjectController) ExportProjects(ctx *gin.Context) {
 
 // SubmitProject 提交项目审核
 func (c *ProjectController) SubmitProject(ctx *gin.Context) {
-	idStr := ctx.Param("id")
-	id, err := strconv.ParseUint(idStr, 10, 32)
+	projectID, _ := strconv.Atoi(ctx.PostForm("id"))
+	id, err := strconv.ParseUint(strconv.Itoa(projectID), 10, 32)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{
 			"code":    400,
@@ -1004,6 +1004,43 @@ func (c *ProjectController) GetTeacherProjects(ctx *gin.Context) {
 			"page":  params.Page,
 			"size":  params.Size,
 		},
+	})
+}
+
+// 获取当前教师的所有学生的项目以及每个项目对应的文件
+func (c *ProjectController) GetStudentProjectsFiles(ctx *gin.Context) {
+	//学生id
+	Sid := ctx.Query("student_id")
+	SidUint64, err := strconv.ParseUint(Sid, 10, 32)
+	//项目id
+	projectID, _ := strconv.Atoi(ctx.Query("id"))
+	id, err := strconv.ParseUint(strconv.Itoa(projectID), 10, 32)
+	// 从JWT中获取当前用户ID
+	userID, exists := ctx.Get("userID")
+	if !exists {
+		ctx.JSON(http.StatusUnauthorized, gin.H{
+			"code":    401,
+			"message": "未获取到用户信息",
+		})
+		return
+	}
+
+	teacherID := userID.(uint)
+
+	projectsFiles, err := c.projectService.GetStudentProjectsFiles(teacherID, uint(id), uint(SidUint64))
+	if err != nil {
+		log.Printf("获取教师项目文件失败: %v", err)
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"code":    500,
+			"message": "获取教师项目文件失败: " + err.Error(),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{
+		"code":    200,
+		"message": "获取教师项目文件成功",
+		"data":    projectsFiles,
 	})
 }
 

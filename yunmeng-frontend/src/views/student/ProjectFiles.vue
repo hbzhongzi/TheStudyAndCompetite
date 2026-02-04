@@ -85,14 +85,14 @@
         <el-table-column label="类型" width="120">
           <template #default="{ row }">
             <el-tag size="small">
-              {{ categoryLabel(row.category) }}
+              {{ row.ext}}
             </el-tag>
           </template>
         </el-table-column>
 
         <el-table-column label="大小" width="120">
           <template #default="{ row }">
-            {{ formatFileSize(row.fileSize) }}
+            {{ formatFileSize(row.size) }}
           </template>
         </el-table-column>
 
@@ -168,17 +168,12 @@ const uploadFiles = ref([])
 const canEdit = computed(() => project.value.status === 'approved')
 
 /* ========= 状态 ========= */
-const statusType = (status) =>
-  status === 'approved' ? 'success'
-    : status === 'pending' ? 'warning'
-      : status === 'rejected' ? 'danger'
-        : 'info'
+const statusText = (status)  =>
+  ({ draft: '草稿', submitted: '待审核', approved: '已通过', rejected: '已拒绝' }[status] || status)
 
-const statusText = (status) =>
-  status === 'approved' ? '已通过'
-    : status === 'pending' ? '审核中'
-      : status === 'rejected' ? '已驳回'
-        : '未知'
+const statusType = (status)  =>
+  ({ draft: '', submitted: 'warning', approved: 'success', rejected: 'danger' }[status] || '')
+
 
 /* ========= 工具 ========= */
 const formatDateTime = (time) =>
@@ -191,12 +186,6 @@ const formatFileSize = (size) => {
   return (size / 1024 / 1024).toFixed(1) + ' MB'
 }
 
-const categoryLabel = (val) => ({
-  document: '文档',
-  image: '图片',
-  video: '视频',
-  other: '其他'
-}[val] || '未知')
 
 /* ========= 数据加载 ========= */
 

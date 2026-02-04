@@ -381,7 +381,7 @@ func (s *ProjectService) GetProjectFiles(
 
 	var files []models.File
 	err := s.db.
-		Where("project_id = ? AND status = 'active'", projectID).
+		Where("project_id = ?  AND deleted_at IS NULL ", projectID).
 		Order("created_at DESC").
 		Find(&files).Error
 
@@ -417,6 +417,7 @@ func (s *ProjectService) SaveProjectFiles(
 			OriginalName: f.Filename,
 			FilePath:     fullPath,
 			FileSize:     f.Size,
+			Status:       "draft", // 默认状态为 draft
 			FileExt:      ext,
 			UploadedBy:   userID,
 			ProjectID:    projectID,
@@ -622,9 +623,9 @@ func (s *ProjectService) DeleteProject(id uint) error {
 	}
 
 	// 检查状态：只有草稿或已驳回状态的项目可以删除
-	if project.Status != "draft" && project.Status != "rejected" {
-		return errors.New("只有草稿或已驳回状态的项目可以删除")
-	}
+	//if project.Status != "draft" && project.Status != "rejected" {
+	//	return errors.New("只有草稿或已驳回状态的项目可以删除")
+	//}
 
 	// 开始事务
 	tx := s.db.Begin()
@@ -1207,7 +1208,7 @@ func (s *ProjectService) GetStudentTeachers(studentID uint) ([]models.TeacherLis
 
 // SubmitProject 提交项目审核
 func (s *ProjectService) SubmitProject(projectID, studentID uint) error {
-	// 检查项目是否存�?
+	// 检查项目是否存?
 	var project models.Project
 	if err := s.db.First(&project, projectID).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -1229,7 +1230,7 @@ func (s *ProjectService) SubmitProject(projectID, studentID uint) error {
 	// 更新项目状态和提交时间
 	now := time.Now()
 	updates := map[string]interface{}{
-		"status":       "pending",
+		"status":       "submitted",
 		"submitted_at": &now,
 	}
 
@@ -2244,6 +2245,41 @@ func (s *ProjectService) GetTeacherProjects(teacherID uint, params models.Teache
 	}
 
 	return responses, total, nil
+}
+
+func (s *ProjectService) GetStudentProjectsFiles(
+	teacherID uint,
+	projectID uint,
+	studentID uint,
+) ([]models.File, error) {
+
+	var files []models.File
+
+	// 基础查询：files 表
+	query := s.db.Model(&models.File{}).
+		Joins("JOIN projects ON projects.id = files.project_id").
+		Where("projects.teacher_id = ? and files.deleted_at is NULL", teacherID)
+
+	// 按项目过滤
+	if projectID != 0 {
+		query = query.Where("files.project_id = ?", projectID)
+	}
+
+	// 按学生过滤
+	if studentID != 0 {
+		query = query.Where("files.uploaded_by = ?", studentID)
+	}
+
+	// 排序（最新上传的在前）
+	err := query.
+		Order("files.created_at DESC").
+		Find(&files).Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	return files, nil
 }
 
 // GetTeacherListWithFilter 获取教师列表（带过滤）
