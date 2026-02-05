@@ -26,152 +26,82 @@ func NewProjectService(db *gorm.DB) *ProjectService {
 	return &ProjectService{db: db}
 }
 
-// GetProjectList 获取项目列表
-func (s *ProjectService) GetProjectList(params models.ProjectQueryParams) ([]models.ProjectListResponse, int64, error) {
-	var projects []models.Project
-	var total int64
-
-	// 构建查询
-	query := s.db.Model(&models.Project{}).
-		Preload("Student.Profile").
-		Preload("Teacher.Profile").
-		Preload("Members").
-		Preload("Files").
-		Preload("Reviews")
-
-	// 搜索条件
-	if params.Search != "" {
-		search := "%" + params.Search + "%"
-		query = query.Where("projects.title LIKE ? OR projects.description LIKE ?", search, search)
-	}
-
-	// 类型筛�?
-	if params.Type != "" {
-		query = query.Where("projects.type = ?", params.Type)
-	}
-
-	// 状态筛�?
-	if params.Status != "" {
-		query = query.Where("projects.status = ?", params.Status)
-	}
-
-	// 学生ID筛�?
-	if params.StudentID > 0 {
-		query = query.Where("projects.student_id = ?", params.StudentID)
-	}
-
-	// 获取总数
-	if err := query.Count(&total).Error; err != nil {
-		log.Printf("获取项目总数失败: %v", err)
-		return nil, 0, err
-	}
-
-	// 排序
-	if params.SortBy != "" {
-		order := params.SortBy
-		if params.SortOrder == "desc" {
-			order += " DESC"
-		}
-		query = query.Order(order)
-	} else {
-		query = query.Order("projects.created_at DESC")
-	}
-
-	// 分页
-	if params.Page > 0 && params.Size > 0 {
-		offset := (params.Page - 1) * params.Size
-		query = query.Offset(offset).Limit(params.Size)
-	}
-
-	// 执行查询
-	if err := query.Find(&projects).Error; err != nil {
-		log.Printf("查询项目列表失败: %v", err)
-		return nil, 0, err
-	}
-
-	// 转换为响应格�?
-	var responses []models.ProjectListResponse
-	for _, project := range projects {
-		response := models.ProjectListResponse{
-			ID:          project.ID,
-			Title:       project.Title,
-			Description: project.Description,
-			Type:        project.Type,
-			Status:      project.Status,
-			TeacherID:   project.TeacherID,
-			SubmittedAt: project.SubmittedAt,
-			CreatedAt:   project.CreatedAt,
-			UpdatedAt:   project.UpdatedAt,
-		}
-
-		// 添加学生信息
-		if project.Student != nil && project.Student.Profile != nil {
-			response.StudentName = project.Student.Profile.RealName
-			response.StudentID = project.Student.Profile.StudentID
-		}
-
-		// 添加教师信息
-		if project.Teacher != nil && project.Teacher.Profile != nil {
-			response.TeacherName = project.Teacher.Profile.RealName
-		}
-
-		responses = append(responses, response)
-	}
-
-	log.Printf("项目列表查询完成 - 总数: %d, 返回数量: %d", total, len(responses))
-	return responses, total, nil
-}
-
-// GetProjectByID 根据ID获取项目详情
+// GetProjectByID 根据ID获取项目详情（含学生、教师、文件）
 func (s *ProjectService) GetProjectByID(id uint) (*models.ProjectDetailResponse, error) {
 	var project models.Project
-	err := s.db.Preload("Student.Profile").
+
+	err := s.db.
+		Preload("Student.Profile").
 		Preload("Teacher.Profile").
+		Preload("Files", func(db *gorm.DB) *gorm.DB {
+			return db.Where("deleted_at IS NULL") // 过滤被软删除的文件
+		}).
 		First(&project, id).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, errors.New("项目不存在")
 		}
-		log.Printf("查询项目详情失败 - 项目ID: %d, 错误: %v", id, err)
+		log.Printf("GetProjectByID 查询失败, id=%d, err=%v", id, err)
 		return nil, err
 	}
 
-	// 构建响应数据
-	response := &models.ProjectDetailResponse{
+	/* ================= 构建基础响应 ================= */
+
+	resp := &models.ProjectDetailResponse{
 		ID:          project.ID,
 		Title:       project.Title,
 		Description: project.Description,
 		IsApproved:  project.IsApproved,
-		Plan:        project.Plan,
 		Type:        project.Type,
 		Status:      project.Status,
+		Plan:        project.Plan,
 		CreatedAt:   project.CreatedAt,
 		UpdatedAt:   project.UpdatedAt,
+		Files:       make([]models.ProjectFileResponse, 0),
 	}
 
-	// 添加学生信息
+	/* ================= 学生信息 ================= */
+
 	if project.Student != nil && project.Student.Profile != nil {
-		response.Student.ID = project.Student.ID
-		response.Student.Username = project.Student.Username
-		response.Student.RealName = project.Student.Profile.RealName
-		response.Student.Email = project.Student.Email
-		response.Student.Phone = project.Student.Profile.Phone
-		response.Student.Department = project.Student.Profile.Department
-		response.Student.StudentID = project.Student.Profile.StudentID
+		resp.Student.ID = project.Student.ID
+		resp.Student.Username = project.Student.Username
+		resp.Student.RealName = project.Student.Profile.RealName
+		resp.Student.Email = project.Student.Email
+		resp.Student.Phone = project.Student.Profile.Phone
+		resp.Student.Department = project.Student.Profile.Department
+		resp.Student.StudentID = project.Student.Profile.StudentID
 	}
 
-	// 添加教师信息
+	/* ================= 教师信息 ================= */
+
 	if project.Teacher != nil && project.Teacher.Profile != nil {
-		response.Teacher.ID = project.Teacher.ID
-		response.Teacher.Username = project.Teacher.Username
-		response.Teacher.RealName = project.Teacher.Profile.RealName
-		response.Teacher.Email = project.Teacher.Email
-		response.Teacher.Phone = project.Teacher.Profile.Phone
-		response.Teacher.Department = project.Teacher.Profile.Department
+		resp.Teacher.ID = project.Teacher.ID
+		resp.Teacher.Username = project.Teacher.Username
+		resp.Teacher.RealName = project.Teacher.Profile.RealName
+		resp.Teacher.Email = project.Teacher.Email
+		resp.Teacher.Phone = project.Teacher.Profile.Phone
+		resp.Teacher.Department = project.Teacher.Profile.Department
 	}
 
-	log.Printf("项目详情查询完成 - 项目ID: %d, 标题: %s", id, project.Title)
-	return response, nil
+	/* ================= 文件列表 ================= */
+
+	for _, f := range project.Files {
+		resp.Files = append(resp.Files, models.ProjectFileResponse{
+			ID:           f.ID,
+			OriginalName: f.OriginalName,
+			FileURL:      "/" + f.FilePath,
+			Size:         f.FileSize,
+			Ext:          f.FileExt,
+			Category:     f.Category,
+			Status:       f.Status,
+			ReviewStatus: f.ReviewStatus,
+			Description:  f.Description,
+			UploadTime:   f.CreatedAt,
+		})
+	}
+
+	log.Printf("GetProjectByID 成功, id=%d, title=%s", project.ID, project.Title)
+	return resp, nil
 }
 
 // CreateProject 创建项目
@@ -825,6 +755,7 @@ func (s *ProjectService) GetProjectsForTeacher(params models.ProjectQueryParams)
 
 		if project.Student != nil && project.Student.Profile != nil {
 			response.Student.Name = project.Student.Profile.RealName
+			response.Student.UserID = project.Student.ID
 			response.Student.StudentID = project.Student.Profile.StudentID
 		}
 
@@ -834,9 +765,9 @@ func (s *ProjectService) GetProjectsForTeacher(params models.ProjectQueryParams)
 	return responses, total, nil
 }
 
-// ReviewProjectWithResponse 审核项目并返回响�?
+// ReviewProjectWithResponse 审核项目并返回响应
 func (s *ProjectService) ReviewProjectWithResponse(projectID uint, reviewerID uint, req models.ProjectReviewRequest) (*models.ProjectReviewResponse, error) {
-	// 检查项目是否存�?
+	// 检查项目是否存在?
 	var project models.Project
 	if err := s.db.First(&project, projectID).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -2235,11 +2166,6 @@ func (s *ProjectService) GetTeacherProjects(teacherID uint, params models.Teache
 			CreatedAt:   project.CreatedAt,
 			UpdatedAt:   project.UpdatedAt,
 		}
-
-		// 获取成员数量
-		var memberCount int64
-		s.db.Model(&models.ProjectMember{}).Where("project_id = ?", project.ID).Count(&memberCount)
-		response.MemberCount = int(memberCount)
 
 		responses = append(responses, response)
 	}

@@ -79,7 +79,7 @@ class TeacherService {
   }
 
 //获得指定学生项目的文件列表
-  async getStudentProjectsFiles(studentId, params = {}) {
+  async getStudentProjectsFiles(params = {student_id: null, id: null}) {
     try{
       const response = await api.get(`/teachers/Stufiles`, { params })
       return response
@@ -92,7 +92,8 @@ class TeacherService {
   // 获取项目详情
   async getProjectDetail(projectId) {
     try {
-      const response = await api.get(`/projects/${projectId}`)
+      
+      const response = await api.get(`/projects/detail` , { params: { id: projectId } })
       return response
     } catch (error) {
       throw new Error(error.response?.data?.message || '获取项目详情失败')

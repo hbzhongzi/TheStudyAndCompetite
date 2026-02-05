@@ -1,5 +1,5 @@
 <template>
-  <div class="teacher-extension-review">
+  <div class="project-review">
     <el-card>
       <!-- 头部 -->
       <template #header>

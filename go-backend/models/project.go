@@ -32,23 +32,12 @@ type Project struct {
 	// 关联关系
 	Student *User `gorm:"foreignKey:StudentID" json:"student,omitempty"`
 	Teacher *User `gorm:"foreignKey:TeacherID" json:"teacher,omitempty"`
+	// 项目文件（一对多）
+	Files []File `gorm:"foreignKey:ProjectID;constraint:OnDelete:CASCADE" json:"files"`
 }
 
 func (Project) TableName() string {
 	return "projects"
-}
-
-// ProjectMember 项目成员表
-type ProjectMember struct {
-	ID            uint   `gorm:"primaryKey;autoIncrement;column:id" json:"id"`
-	ProjectID     uint   `gorm:"not null;column:project_id" json:"projectId"`
-	Name          string `gorm:"not null;size:50" json:"name"`
-	StudentNumber string `gorm:"size:30;column:student_number" json:"studentNumber"`
-	Role          string `gorm:"size:30" json:"role"`
-}
-
-func (pm *ProjectMember) TableName() string {
-	return "project_members"
 }
 
 // ProjectFile 项目附件表
@@ -182,7 +171,8 @@ type ProjectDetailResponse struct {
 	Plan        string    `json:"plan"`
 	CreatedAt   time.Time `json:"createdAt"`
 	UpdatedAt   time.Time `json:"updatedAt"`
-	Student     struct {
+
+	Student struct {
 		ID         uint   `json:"id"`
 		Username   string `json:"username"`
 		RealName   string `json:"realName"`
@@ -191,6 +181,7 @@ type ProjectDetailResponse struct {
 		Department string `json:"department"`
 		StudentID  string `json:"studentId"`
 	} `json:"student"`
+
 	Teacher struct {
 		ID         uint   `json:"id"`
 		Username   string `json:"username"`
@@ -199,12 +190,43 @@ type ProjectDetailResponse struct {
 		Phone      string `json:"phone"`
 		Department string `json:"department"`
 	} `json:"teacher"`
-	Files []struct {
-		ID         uint      `json:"id"`
-		FileName   string    `json:"fileName"`
-		FileURL    string    `json:"fileUrl"`
-		UploadTime time.Time `json:"uploadTime"`
-	} `json:"files"`
+
+	Files []ProjectFileResponse `json:"files"`
+}
+
+// ProjectFileResponse 项目文件响应（用于详情 & 审核）
+type ProjectFileResponse struct {
+	ID           uint      `json:"id"`
+	OriginalName string    `json:"originalName"`
+	FileURL      string    `json:"fileUrl"`
+	Size         int64     `json:"size"`
+	Ext          string    `json:"ext"`
+	Category     string    `json:"category"`
+	Status       string    `json:"status"`
+	ReviewStatus string    `json:"reviewStatus"`
+	Description  string    `json:"description"`
+	UploadTime   time.Time `json:"uploadTime"`
+}
+
+// File 文件模型
+type File struct {
+	ID           uint   `gorm:"primaryKey" json:"id"`
+	FileName     string `json:"fileName"`
+	OriginalName string `json:"originalName"`
+	FilePath     string `json:"filePath"`
+	FileSize     int64  `json:"size"`
+	FileExt      string `json:"ext"`
+	MimeType     string `json:"mimeType"`
+	Category     string `json:"category"`
+
+	ProjectID  uint `json:"projectId"`
+	UploadedBy uint `json:"uploadedBy"`
+
+	Status       string `json:"status"`
+	ReviewStatus string `json:"reviewStatus"`
+	Description  string `json:"description"`
+
+	CreatedAt time.Time `json:"createdAt"`
 }
 
 // ExtensionApprovalRequest 教师审批延期
@@ -308,27 +330,6 @@ type ProjectQueryParams struct {
 	SortOrder  string `form:"sortOrder"`
 }
 
-// File 文件模型
-type File struct {
-	ID           uint   `gorm:"primaryKey" json:"id"`
-	FileName     string `json:"fileName"`
-	OriginalName string `json:"originalName"`
-	FilePath     string `json:"filePath"`
-	FileSize     int64  `json:"size"`
-	FileExt      string `json:"ext"`
-	MimeType     string `json:"mimeType"`
-	Category     string `json:"category"`
-
-	ProjectID  uint `json:"projectId"`
-	UploadedBy uint `json:"uploadedBy"`
-
-	Status       string `json:"status"`
-	ReviewStatus string `json:"reviewStatus"`
-	Description  string `json:"description"`
-
-	CreatedAt time.Time `json:"createdAt"`
-}
-
 // ProjectExportRequest 项目导出请求
 type ProjectExportRequest struct {
 	Format  string             `json:"format" binding:"required,oneof=excel csv"`
@@ -360,6 +361,7 @@ type ProjectListForTeacherResponse struct {
 	Type    string `json:"type"`
 	Status  string `json:"status"`
 	Student struct {
+		UserID    uint   `json:"user_id"`
 		Name      string `json:"name"`
 		StudentID string `json:"studentId"`
 	} `json:"student"`

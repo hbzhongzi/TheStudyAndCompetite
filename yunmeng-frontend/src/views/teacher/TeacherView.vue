@@ -41,9 +41,10 @@
                 <span>项目管理</span>
               </template>
               <el-menu-item index="project-overview">项目概览</el-menu-item>
+              <el-menu-item index="project-detail">项目详情</el-menu-item>
               <el-menu-item index="project-review">延期审核</el-menu-item>
               <el-menu-item index="project-files">文件审核</el-menu-item>
-              <el-menu-item index="review-tasks">项目审核</el-menu-item>
+
             </el-sub-menu>
             <el-menu-item index="students">
               <el-icon><User /></el-icon>
@@ -193,9 +194,9 @@
 
               <TeacherProjectFiles />
             </div>
-            <div v-else-if="activeMenu === 'project-extensions'" class="welcome-content">
+            <div v-else-if="activeMenu === 'project-detail'" class="welcome-content">
 
-              <TeacherProjectExtensions />
+              <TeacherProjectDetail />
             </div>
             
             <!-- 其他主要界面 -->
@@ -257,6 +258,7 @@ import TeacherProfileView from './TeacherProfileView.vue'
 import TeacherProjectOverview from './TeacherProjectOverview.vue'
 import TeacherProjectReview from './TeacherProjectReview.vue'
 import TeacherProjectFiles from './TeacherProjectFiles.vue'
+import TeacherProjectDetail from './TeacherProjectDetail.vue'
 import TeacherProjectExtensions from './TeacherProjectExtensions.vue'
 
 

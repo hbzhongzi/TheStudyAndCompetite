@@ -43,7 +43,6 @@
               <el-menu-item index="project-overview">项目概览</el-menu-item>
               <el-menu-item index="project-files">项目详情</el-menu-item>
               <el-menu-item index="project-extensions">延期申请</el-menu-item>
-              <el-menu-item index="project-progress">进度跟踪</el-menu-item>
             </el-sub-menu>
             <el-sub-menu index="competitions">
               <template #title>
@@ -158,9 +157,6 @@
             </div>
             <div v-else-if="activeMenu === 'project-extensions'" class="welcome-content">
               <ProjectExtensions />
-            </div>
-            <div v-else-if="activeMenu === 'project-progress'" class="welcome-content">
-              <ProjectProgress />
             </div>
             
             <!-- 其他界面 -->
