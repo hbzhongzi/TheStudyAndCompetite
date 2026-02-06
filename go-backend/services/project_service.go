@@ -582,56 +582,6 @@ func (s *ProjectService) DeleteProject(id uint) error {
 	return nil
 }
 
-// ReviewProject 审核项目
-func (s *ProjectService) ReviewProject(projectID uint, reviewerID uint, req models.ProjectReviewRequest) error {
-	// 检查项目是否存�?
-	var project models.Project
-	if err := s.db.First(&project, projectID).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return errors.New("项目不存在")
-		}
-		return err
-	}
-
-	// 开始事务
-	tx := s.db.Begin()
-	defer func() {
-		if r := recover(); r != nil {
-			tx.Rollback()
-		}
-	}()
-
-	// 创建审核记录
-	review := models.ProjectReview{
-		ProjectID:  projectID,
-		ReviewerID: reviewerID,
-		Status:     req.Status,
-		Comments:   req.Comments,
-	}
-
-	if err := tx.Create(&review).Error; err != nil {
-		tx.Rollback()
-		log.Printf("创建审核记录失败: %v", err)
-		return errors.New("创建审核记录失败")
-	}
-
-	// 更新项目状�?
-	if err := tx.Model(&project).Update("status", req.Status).Error; err != nil {
-		tx.Rollback()
-		log.Printf("更新项目状态失败: %v", err)
-		return errors.New("更新项目状态失败")
-	}
-
-	// 提交事务
-	if err := tx.Commit().Error; err != nil {
-		log.Printf("提交事务失败: %v", err)
-		return errors.New("审核项目失败")
-	}
-
-	log.Printf("项目审核完成 - 项目ID: %d, 审核结果: %s", projectID, req.Status)
-	return nil
-}
-
 // GetMyProjects 获取我的项目列表
 func (s *ProjectService) GetMyProjects(studentID uint, status string, page, size int) ([]models.ProjectMyListResponse, int64, error) {
 	var projects []models.Project
@@ -665,6 +615,7 @@ func (s *ProjectService) GetMyProjects(studentID uint, status string, page, size
 			Description: project.Description,
 			Progress:    project.Progress,
 			Plan:        project.Plan,
+			FinishTime:  project.FinishTime,
 		})
 	}
 
@@ -766,10 +717,10 @@ func (s *ProjectService) GetProjectsForTeacher(params models.ProjectQueryParams)
 }
 
 // ReviewProjectWithResponse 审核项目并返回响应
-func (s *ProjectService) ReviewProjectWithResponse(projectID uint, reviewerID uint, req models.ProjectReviewRequest) (*models.ProjectReviewResponse, error) {
+func (s *ProjectService) ReviewProjectWithResponse(reviewerID uint, req models.ProjectReviewRequest) (*models.ProjectReviewResponse, error) {
 	// 检查项目是否存在?
 	var project models.Project
-	if err := s.db.First(&project, projectID).Error; err != nil {
+	if err := s.db.First(&project, req.ProjectID).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, errors.New("项目不存在")
 		}
@@ -786,10 +737,10 @@ func (s *ProjectService) ReviewProjectWithResponse(projectID uint, reviewerID ui
 
 	// 创建审核记录
 	review := models.ProjectReview{
-		ProjectID:  projectID,
+		ProjectID:  req.ProjectID,
 		ReviewerID: reviewerID,
 		Status:     req.Status,
-		Comments:   req.Comments,
+		Comments:   req.ReviewReason,
 	}
 
 	if err := tx.Create(&review).Error; err != nil {
@@ -798,8 +749,11 @@ func (s *ProjectService) ReviewProjectWithResponse(projectID uint, reviewerID ui
 		return nil, errors.New("创建审核记录失败")
 	}
 
-	// 更新项目状�?
-	if err := tx.Model(&project).Update("status", req.Status).Error; err != nil {
+	// 根据审核结果更新项目状态
+	isApproved := req.Status == "approved"
+
+	// 更新项目状态
+	if err := tx.Model(&project).Update("status", req.Status).Update("approved_by", reviewerID).Update("approved_at", time.Now()).Update("reviewReason", req.ReviewReason).Update("is_approved", isApproved).Error; err != nil {
 		tx.Rollback()
 		log.Printf("更新项目状态失败: %v", err)
 		return nil, errors.New("更新项目状态失败")
@@ -1923,77 +1877,6 @@ func (s *ProjectService) DelegateReview(reviewID uint, userID uint, req models.R
 
 	log.Printf("审核委托创建成功 - 委托ID: %d", delegation.ID)
 	return response, nil
-}
-
-// GetMyReviewTasks 获取我的审核任务
-func (s *ProjectService) GetMyReviewTasks(userID uint, params models.ReviewTaskQueryParams) ([]models.ReviewTaskResponse, int64, error) {
-	var reviews []models.ProjectReview
-	var total int64
-
-	query := s.db.Model(&models.ProjectReview{}).Where("reviewer_id = ?", userID)
-
-	// 应用查询参数
-	if params.Status != "" {
-		query = query.Where("status = ?", params.Status)
-	}
-	if params.Priority != "" {
-		query = query.Where("priority = ?", params.Priority)
-	}
-
-	// 获取总数
-	if err := query.Count(&total).Error; err != nil {
-		return nil, 0, err
-	}
-
-	// 排序
-	if params.SortBy != "" {
-		order := params.SortBy
-		if params.SortOrder == "desc" {
-			order += " DESC"
-		}
-		query = query.Order(order)
-	} else {
-		query = query.Order("created_at DESC")
-	}
-
-	// 分页
-	if params.Page > 0 && params.Size > 0 {
-		offset := (params.Page - 1) * params.Size
-		query = query.Offset(offset).Limit(params.Size)
-	}
-
-	// 执行查询
-	if err := query.Preload("Project").Find(&reviews).Error; err != nil {
-		return nil, 0, err
-	}
-
-	// 转换为响应格式
-	var responses []models.ReviewTaskResponse
-	for _, review := range reviews {
-		response := models.ReviewTaskResponse{
-			ID:           review.ID,
-			ProjectID:    review.ProjectID,
-			ProjectTitle: review.Project.Title,
-			ReviewLevel:  review.ReviewLevel,
-			ReviewOrder:  review.ReviewOrder,
-			Deadline:     review.Deadline,
-			IsUrgent:     review.IsUrgent,
-			Status:       review.Status,
-			CreatedAt:    review.CreatedAt,
-		}
-
-		// 获取学生姓名
-		if review.Project.Student != nil && review.Project.Student.Profile != nil {
-			response.StudentName = review.Project.Student.Profile.RealName
-		}
-
-		// 获取项目类型
-		response.ProjectType = review.Project.Type
-
-		responses = append(responses, response)
-	}
-
-	return responses, total, nil
 }
 
 // GetReviewFlowConfig 获取审核流程配置

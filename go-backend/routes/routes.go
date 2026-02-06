@@ -104,13 +104,6 @@ func RegisterRoutes(r *gin.Engine, db *gorm.DB) {
 				// =============================================
 				teacherProjects.PUT("/files/:fileId/review", projectController.ReviewProjectFile) // 审核项目文件
 
-				// =============================================
-				// 5. 审核流程增强路由（教师/管理员）
-				// =============================================
-				teacherProjects.POST("/reviews/:reviewId/delegate", projectController.DelegateReview) // 委托审核
-				teacherProjects.GET("/my-review-tasks", projectController.GetMyReviewTasks)           // 获取我的审核任务
-				teacherProjects.GET("/review-flow-config", projectController.GetReviewFlowConfig)     // 获取审核流程配置
-
 			}
 
 			// 管理员项目管理路由

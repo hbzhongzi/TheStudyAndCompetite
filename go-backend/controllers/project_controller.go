@@ -4,6 +4,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"yunmeng-backend/models"
 	"yunmeng-backend/services"
@@ -425,46 +426,63 @@ func (c *ProjectController) DeleteFile(ctx *gin.Context) {
 
 // ReviewProject 审核项目
 func (c *ProjectController) ReviewProject(ctx *gin.Context) {
-	idStr := ctx.Param("id")
-	id, err := strconv.ParseUint(idStr, 10, 32)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{
-			"code":    400,
-			"message": "项目ID格式错误",
-		})
-		return
-	}
-
-	var req models.ProjectReviewRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		log.Printf("参数绑定失败: %v", err)
-		ctx.JSON(http.StatusBadRequest, gin.H{
-			"code":    400,
-			"message": "参数错误: " + err.Error(),
-		})
-		return
-	}
-
-	// 从JWT中获取审核者ID
-	reviewerID, exists := ctx.Get("userID")
+	// 从JWT中获取当前用户ID
+	userID, exists := ctx.Get("userID")
 	if !exists {
 		ctx.JSON(http.StatusUnauthorized, gin.H{
 			"code":    401,
-			"message": "未授权访问",
+			"message": "未获取到用户信息",
+		})
+		return
+	}
+	teacherID := userID.(uint)
+	// 2. 绑定请求参数
+	var req models.ProjectReviewRequest
+	if err := ctx.ShouldBind(&req); err != nil {
+		log.Printf("参数绑定失败: %v", err)
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"code":    400,
+			"message": "参数错误",
+			"error":   err.Error(),
+		})
+		return
+	}
+	// 3. 验证请求参数
+	if req.Status != "approved" && req.Status != "rejected" {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"code":    400,
+			"message": "状态参数必须为 approved 或 rejected",
 		})
 		return
 	}
 
-	response, err := c.projectService.ReviewProjectWithResponse(uint(id), reviewerID.(uint), req)
+	// 6. 调用服务层处理审核逻辑
+	response, err := c.projectService.ReviewProjectWithResponse(uint(teacherID), req)
 	if err != nil {
 		log.Printf("审核项目失败: %v", err)
-		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"code":    500,
-			"message": "审核项目失败: " + err.Error(),
-		})
+
+		// 根据错误类型返回不同的状态码
+		if strings.Contains(err.Error(), "项目不存在") {
+			ctx.JSON(http.StatusNotFound, gin.H{
+				"code":    404,
+				"message": "项目不存在",
+			})
+		} else if strings.Contains(err.Error(), "已审核") {
+			ctx.JSON(http.StatusBadRequest, gin.H{
+				"code":    400,
+				"message": "项目已审核，不能重复审核",
+			})
+		} else {
+			ctx.JSON(http.StatusInternalServerError, gin.H{
+				"code":    500,
+				"message": "审核项目失败",
+				"error":   err.Error(),
+			})
+		}
 		return
 	}
 
+	// 7. 返回成功响应
 	ctx.JSON(http.StatusOK, gin.H{
 		"code":    200,
 		"message": "审核完成",
@@ -1765,38 +1783,6 @@ func (c *ProjectController) DelegateReview(ctx *gin.Context) {
 		"code":    200,
 		"message": "委托审核成功",
 		"data":    delegation,
-	})
-}
-
-// GetMyReviewTasks 获取我的审核任务
-func (c *ProjectController) GetMyReviewTasks(ctx *gin.Context) {
-	var params models.ReviewTaskQueryParams
-	if err := ctx.ShouldBindQuery(&params); err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{
-			"code":    400,
-			"message": "参数错误: " + err.Error(),
-		})
-		return
-	}
-
-	userID := ctx.GetUint("user_id")
-	tasks, total, err := c.projectService.GetMyReviewTasks(userID, params)
-	if err != nil {
-		log.Printf("获取审核任务失败: %v", err)
-		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"code":    500,
-			"message": "获取审核任务失败: " + err.Error(),
-		})
-		return
-	}
-
-	ctx.JSON(http.StatusOK, gin.H{
-		"code":    200,
-		"message": "获取审核任务成功",
-		"data": gin.H{
-			"list":  tasks,
-			"total": total,
-		},
 	})
 }
 

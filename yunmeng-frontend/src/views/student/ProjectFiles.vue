@@ -21,40 +21,63 @@
       </div>
     </el-card>
 
-    <!-- 项目基本信息 -->
-    <el-card class="mb-20" v-if="project.id">
-      <template #header>
-        <span>项目详情</span>
-      </template>
+<!-- 项目基本信息 -->
+<el-card class="mb-20" v-if="project.id">
+  <template #header>
+    <div class="header-content">
+      <span>项目详情</span>
+      <el-tag
+        :type="project.isApproved ? 'success' : 'warning'"
+        size="small"
+      >
+        {{ project.isApproved ? '已立项' : '未立项' }}
+      </el-tag>
+    </div>
+  </template>
 
-      <el-descriptions border :column="2">
-        <el-descriptions-item label="项目名称">
-          {{ project.title }}
-        </el-descriptions-item>
+  <el-descriptions border :column="2">
+    <!-- 项目 -->
+    <el-descriptions-item label="项目名称">
+      {{ project.title }}
+    </el-descriptions-item>
 
-        <el-descriptions-item label="项目类型">
-          {{ project.type }}
-        </el-descriptions-item>
+    <el-descriptions-item label="项目类型">
+      {{ project.type }}
+    </el-descriptions-item>
 
-        <el-descriptions-item label="项目状态">
-          <el-tag :type="statusType(project.status)">
-            {{ statusText(project.status) }}
-          </el-tag>
-        </el-descriptions-item>
+    <el-descriptions-item label="项目状态">
+      <el-tag :type="statusType(project.status)">
+        {{ statusText(project.status) }}
+      </el-tag>
+    </el-descriptions-item>
 
-        <el-descriptions-item label="创建时间">
-          {{ formatDateTime(project.createdAt) }}
-        </el-descriptions-item>
-      </el-descriptions>
+    <el-descriptions-item label="创建时间">
+      {{ formatDateTime(project.createdAt) }}
+    </el-descriptions-item>
 
-      <el-alert
-        v-if="!canEdit"
-        class="mt-10"
-        type="warning"
-        show-icon
-        title="项目尚未通过审核，暂不可上传或删除文件"
-      />
-    </el-card>
+    <!-- 学生 -->
+    <el-descriptions-item label="学生姓名">
+      {{ project.student?.realName || '—' }}
+    </el-descriptions-item>
+
+    <el-descriptions-item label="学号">
+      {{ project.student?.studentId || '—' }}
+    </el-descriptions-item>
+
+    <el-descriptions-item label="学生学院">
+      {{ project.student?.department || '—' }}
+    </el-descriptions-item>
+
+    <el-descriptions-item label="学生邮箱">
+      {{ project.student?.email || '—' }}
+    </el-descriptions-item>
+
+    <!-- 教师（仅显示指导教师名称） -->
+    <el-descriptions-item label="指导教师">
+      {{ project.teacher?.realName || '—' }}
+    </el-descriptions-item>
+  </el-descriptions>
+</el-card>
 
     <!-- 项目成果文件 -->
     <el-card>

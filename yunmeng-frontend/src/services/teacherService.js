@@ -101,9 +101,9 @@ class TeacherService {
   }
 
   // 审核项目
-  async reviewProject(projectId, reviewData) {
+  async reviewProject(reviewData) {
     try {
-      const response = await api.put(`/projects/${projectId}/review`, reviewData)
+      const response = await api.post(`/teacher-projects/review`, reviewData)
       return response
     } catch (error) {
       throw new Error(error.response?.data?.message || '项目审核失败')

@@ -83,7 +83,6 @@ func AutoMigrate(db *gorm.DB) error {
 		&models.LoginLog{},
 		&models.Project{},
 		&models.ProjectFile{},
-		&models.ProjectReview{},
 		&models.ProjectType{},
 		&models.StudentTeacher{},
 	)

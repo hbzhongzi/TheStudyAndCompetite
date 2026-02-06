@@ -64,27 +64,22 @@ func (pf *ProjectFile) TableName() string {
 
 // ProjectReview 项目审核记录表
 type ProjectReview struct {
-	ID          uint       `gorm:"primaryKey;autoIncrement;column:id" json:"id"`
-	ProjectID   uint       `gorm:"not null;column:project_id" json:"projectId"`
-	ReviewerID  uint       `gorm:"not null;column:reviewer_id" json:"reviewerId"`
-	Status      string     `gorm:"type:enum('approved','rejected','archived');not null" json:"status"`
-	Comments    string     `gorm:"type:text" json:"comments"`
-	ReviewTime  time.Time  `gorm:"column:review_time;autoCreateTime" json:"reviewTime"`
-	IsForce     bool       `gorm:"default:false;column:is_force" json:"isForce"`
-	ReviewLevel int        `gorm:"column:review_level" json:"reviewLevel"`
-	ReviewOrder int        `gorm:"column:review_order" json:"reviewOrder"`
-	Deadline    *time.Time `gorm:"column:deadline" json:"deadline"`
-	IsUrgent    bool       `gorm:"default:false;column:is_urgent" json:"isUrgent"`
-	CreatedAt   time.Time  `gorm:"column:created_at;autoCreateTime" json:"createdAt"`
-	UpdatedAt   time.Time  `gorm:"column:updated_at;autoUpdateTime" json:"updatedAt"`
+	ID uint `gorm:"column:id;primaryKey;autoIncrement" json:"id"`
 
-	// 关联关系
-	Reviewer *User    `gorm:"foreignKey:ReviewerID" json:"reviewer,omitempty"`
+	ProjectID  uint `gorm:"column:project_id;not null" json:"projectId"`
+	ReviewerID uint `gorm:"column:reviewer_id;not null" json:"reviewerId"`
+
+	Status   string `gorm:"column:status;type:enum('approved','rejected');not null" json:"status"`
+	Comments string `gorm:"column:comments;type:text" json:"comments,omitempty"`
+
+	ReviewTime time.Time `gorm:"column:review_time;autoCreateTime" json:"reviewTime"`
+
+	CreatedAt time.Time `gorm:"column:created_at;autoCreateTime" json:"createdAt"`
+	UpdatedAt time.Time `gorm:"column:updated_at;autoUpdateTime" json:"updatedAt"`
+
+	// ===== 关联关系（可选）=====
 	Project  *Project `gorm:"foreignKey:ProjectID" json:"project,omitempty"`
-}
-
-func (pr *ProjectReview) TableName() string {
-	return "project_reviews"
+	Reviewer *User    `gorm:"foreignKey:ReviewerID" json:"reviewer,omitempty"`
 }
 
 // StudentTeacher 学生教师绑定关系表
@@ -134,9 +129,9 @@ type ProjectUpdateRequest struct {
 
 // ProjectReviewRequest 项目审核请求
 type ProjectReviewRequest struct {
-	Status   string `json:"status" binding:"required,oneof=approved rejected archived"`
-	Comments string `json:"comments"`
-	IsForce  bool   `json:"isForce"`
+	ProjectID    uint   `json:"projectId"`
+	Status       string `json:"status" binding:"required,oneof=approved rejected archived"`
+	ReviewReason string `json:"reviewReason"`
 }
 
 // ProjectListResponse 项目列表响应
@@ -352,6 +347,7 @@ type ProjectMyListResponse struct {
 	Description string    `json:"description"`
 	CreatedAt   time.Time `json:"createdAt"`
 	Deadline    time.Time `json:"updated_at"`
+	FinishTime  time.Time `json:"finishTime"`
 }
 
 // ProjectListForTeacherResponse 教师查看的项目列表响应

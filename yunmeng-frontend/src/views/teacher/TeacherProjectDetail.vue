@@ -23,7 +23,7 @@
 
         <el-table-column label="学生" width="120">
           <template #default="{ row }">
-            {{ row.studentName }}
+            {{ row.student.name }}
           </template>
         </el-table-column>
 
@@ -255,17 +255,17 @@ const fetchProjectDetail = async (projectId) => {
 
 /* ================= 项目审核 ================= */
 
-const reviewProject = async (status) => {
+const reviewProject = async (Status) => {
   await ElMessageBox.confirm(
-    `确认${status === 'approved' ? '通过' : '驳回'}该项目？`,
+    `确认${Status === 'approved' ? '通过' : '驳回'}该项目？`,
     '提示',
     { type: 'warning' }
   )
 
   await teacherService.reviewProject({
     projectId: project.value.id,
-    status,
-    reason: reviewReason.value
+    Status,
+    ReviewReason: reviewReason.value
   })
 
   ElMessage.success('项目审核完成')

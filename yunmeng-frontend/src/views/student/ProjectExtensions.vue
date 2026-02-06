@@ -4,7 +4,9 @@
       <template #header>
         <div class="header-content">
           <span>项目延期申请管理</span>
-          <el-button type="primary" @click="openApplyDialog">申请延期</el-button>
+          <el-button type="primary" @click="openApplyDialog">
+            申请延期
+          </el-button>
         </div>
       </template>
 
@@ -36,7 +38,12 @@
           </template>
         </el-table-column>
 
-        <el-table-column prop="applyReason" label="申请原因" min-width="200" show-overflow-tooltip />
+        <el-table-column
+          prop="applyReason"
+          label="申请原因"
+          min-width="200"
+          show-overflow-tooltip
+        />
 
         <el-table-column label="状态" width="100">
           <template #default="scope">
@@ -52,7 +59,7 @@
           </template>
         </el-table-column>
 
-        <el-table-column label="审核人" width="120">
+        <el-table-column label="指导教师" width="120">
           <template #default="scope">
             {{ scope.row.teacherName || '—' }}
           </template>
@@ -60,7 +67,9 @@
 
         <el-table-column label="操作" width="120">
           <template #default="scope">
-            <el-button size="small" @click="viewDetail(scope.row)">查看</el-button>
+            <el-button size="small" @click="viewDetail(scope.row)">
+              查看
+            </el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -78,36 +87,61 @@
       width="40%"
     >
       <el-form :model="form" label-width="120px">
-       <el-form-item label="项目ID">
-      <el-input
-        v-model.number="form.projectId"
-        type="number"
-        placeholder="请输入数字ID"
-      />
-    </el-form-item>
-
-
-        <el-form-item label="申请完成时间">
-          <el-date-picker
-              v-model="form.requestedFinishTime"
-              type="date"
-              value-format="YYYY-MM-DDTHH:mm:ssZ"
-              format="YYYY-MM-DD"
-          />
+        <!-- 项目选择 -->
+        <el-form-item label="选择项目">
+          <el-select
+            v-model="form.projectId"
+            placeholder="请选择项目"
+            style="width: 100%"
+          >
+            <el-option
+              v-for="item in projects"
+              :key="item.id"
+              :label="item.title"
+              :value="item.id"
+            />
+          </el-select>
         </el-form-item>
 
+        <!-- 原完成时间 -->
+<el-form-item label="原完成时间">
+  <el-date-picker
+    v-model="form.originalFinishTime"
+    type="date"
+    disabled
+    format="YYYY-MM-DD"
+    value-format="YYYY-MM-DD"
+  />
+</el-form-item>
+
+        <!-- 申请完成时间 -->
+        <el-form-item label="申请完成时间">
+<el-date-picker
+  v-model="form.requestedFinishTime"
+  type="date"
+  format="YYYY-MM-DD"
+  value-format="YYYY-MM-DDT00:00:00+08:00"
+/>
+        </el-form-item>
+
+        <!-- 原因 -->
         <el-form-item label="延期原因">
           <el-input
             v-model="form.applyReason"
             type="textarea"
             :rows="3"
+            placeholder="请输入延期原因"
           />
         </el-form-item>
       </el-form>
 
       <template #footer>
         <el-button @click="applyDialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="submitting" @click="submitApply">
+        <el-button
+          type="primary"
+          :loading="submitting"
+          @click="submitApply"
+        >
           提交申请
         </el-button>
       </template>
@@ -155,23 +189,26 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import studentService from '../../services/studentService'
 
-// 列表
+/* 列表 */
 const extensions = ref([])
 const loading = ref(false)
 
-// 弹窗
+/* 学生项目 */
+const projects = ref([])
+
+/* 弹窗 */
 const applyDialogVisible = ref(false)
 const detailDialogVisible = ref(false)
 const submitting = ref(false)
 
-// 当前查看
+/* 当前详情 */
 const current = ref(null)
 
-// 表单
+/* 表单 */
 const form = ref({
   projectId: null,
   originalFinishTime: '',
@@ -179,7 +216,7 @@ const form = ref({
   applyReason: ''
 })
 
-// 加载列表
+/* 加载延期列表 */
 const loadList = async () => {
   loading.value = true
   try {
@@ -190,9 +227,29 @@ const loadList = async () => {
   }
 }
 
+/* 加载学生项目 */
+const loadMyProjects = async () => {
+  const res = await studentService.getMyProjects()
+  projects.value = res.data.list || []
+
+  if (projects.value.length > 0) {
+    const first = projects.value[0]
+    form.value.projectId = first.id
+    form.value.originalFinishTime = first.finishTime
+  }
+}
+
 onMounted(loadList)
 
-// 工具方法
+/* 监听项目切换 */
+watch(() => form.value.projectId, (val) => {
+  const project = projects.value.find(p => p.id === val)
+  if (project) {
+    form.value.originalFinishTime = project.finishTime
+  }
+})
+
+/* 工具方法 */
 const formatDate = v => v ? v.slice(0, 10) : ''
 const formatDateTime = v => v ? v.replace('T', ' ').slice(0, 19) : ''
 
@@ -214,18 +271,28 @@ const statusType = s => ({
   rejected: 'danger'
 }[s] || 'info')
 
-// 操作
-const openApplyDialog = () => {
+/* 打开弹窗 */
+const openApplyDialog = async () => {
   form.value = {
-    projectId: '',
+    projectId: null,
     originalFinishTime: '',
     requestedFinishTime: '',
     applyReason: ''
   }
+
+  await loadMyProjects()
   applyDialogVisible.value = true
 }
 
+/* 提交 */
 const submitApply = async () => {
+  if (!form.value.projectId) {
+    return ElMessage.warning('请选择项目')
+  }
+  if (!form.value.requestedFinishTime) {
+    return ElMessage.warning('请选择申请完成时间')
+  }
+
   submitting.value = true
   try {
     await studentService.createExtensionApplication(form.value)
@@ -237,6 +304,7 @@ const submitApply = async () => {
   }
 }
 
+/* 查看详情 */
 const viewDetail = row => {
   current.value = row
   detailDialogVisible.value = true
