@@ -13,11 +13,11 @@ type Project struct {
 	StudentID   uint   `gorm:"column:student_id;not null" json:"studentId"`
 	TeacherID   uint   `gorm:"column:teacher_id" json:"teacherId,omitempty"`
 
-	Status          string     `gorm:"column:status;type:enum('draft','submitted','reviewing','approved','rejected','completed');default:'draft'" json:"status"`
-	SubmittedAt     *time.Time `gorm:"column:submitted_at" json:"submittedAt"`
-	ApprovedAt      *time.Time `gorm:"column:approved_at" json:"approvedAt"`
-	ApprovedBy      *uint      `gorm:"column:approved_by" json:"approvedBy,omitempty"`
-	RejectionReason string     `gorm:"column:rejection_reason;type:text" json:"rejectionReason"`
+	Status       string     `gorm:"column:status;type:enum('draft','submitted','reviewing','approved','rejected','completed');default:'draft'" json:"status"`
+	SubmittedAt  *time.Time `gorm:"column:submitted_at" json:"submittedAt"`
+	ApprovedAt   *time.Time `gorm:"column:approved_at" json:"approvedAt"`
+	ApprovedBy   *uint      `gorm:"column:approved_by" json:"approvedBy,omitempty"`
+	ReviewReason string     `gorm:"column:reviewReason;type:text" json:"reviewReason"`
 
 	Plan       string    `gorm:"column:plan;type:varchar(255)" json:"plan"`
 	Progress   int       `gorm:"column:progress;default:0" json:"progress"`
