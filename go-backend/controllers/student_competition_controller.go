@@ -72,30 +72,12 @@ func (cc *StudentCompetitionController) GetAvailableCompetitions(c *gin.Context)
 		response := models.CompetitionResponse{
 			ID:                  comp.ID,
 			Title:               comp.Title,
-			Type:                comp.Type,
-			Organizer:           comp.Organizer,
-			StartTime:           comp.StartTime,
-			EndTime:             comp.EndTime,
 			Description:         comp.Description,
-			Attachment:          comp.Attachment,
-			IsOpen:              comp.IsOpen,
-			MaxParticipants:     comp.MaxParticipants,
 			CurrentParticipants: comp.CurrentParticipants,
 			Status:              comp.Status,
-			AwardConfig:         comp.AwardConfig,
 			CreatedBy:           comp.CreatedBy,
 			CreatedAt:           comp.CreatedAt,
 			UpdatedAt:           comp.UpdatedAt,
-		}
-
-		if comp.CreatedByUser != nil {
-			response.CreatedByUser = &models.CompetitionUserResponse{
-				ID:         comp.CreatedByUser.ID,
-				Username:   comp.CreatedByUser.Username,
-				Email:      comp.CreatedByUser.Email,
-				Status:     comp.CreatedByUser.Status,
-				CreateTime: comp.CreatedByUser.CreateTime,
-			}
 		}
 
 		responses = append(responses, response)
@@ -150,11 +132,6 @@ func (cc *StudentCompetitionController) RegisterCompetition(c *gin.Context) {
 		return
 	}
 
-	if !competition.IsOpen {
-		utils.ResponseError(c, http.StatusBadRequest, "竞赛未开放报名", nil)
-		return
-	}
-
 	// 检查报名时间是否在有效范围内
 	now := time.Now()
 
@@ -171,22 +148,10 @@ func (cc *StudentCompetitionController) RegisterCompetition(c *gin.Context) {
 		return
 	}
 
-	// 如果设置了比赛开始时间，检查比赛是否已开始
-	if competition.StartTime != nil && now.After(*competition.StartTime) {
-		utils.ResponseError(c, http.StatusBadRequest, "比赛已开始，无法报名", nil)
-		return
-	}
-
 	// 检查是否已经报名
 	var existingRegistration models.CompetitionRegistration
 	if err := cc.DB.Where("competition_id = ? AND student_id = ?", competitionID, userID).First(&existingRegistration).Error; err == nil {
 		utils.ResponseError(c, http.StatusBadRequest, "您已经报名过此竞赛", nil)
-		return
-	}
-
-	// 检查是否需要指导老师
-	if competition.TeacherLimit && request.TeacherID == nil {
-		utils.ResponseError(c, http.StatusBadRequest, "此竞赛需要选择指导老师", nil)
 		return
 	}
 
@@ -295,10 +260,6 @@ func (cc *StudentCompetitionController) GetMyRegistrations(c *gin.Context) {
 			response.Competition = &models.CompetitionResponse{
 				ID:          reg.Competition.ID,
 				Title:       reg.Competition.Title,
-				Type:        reg.Competition.Type,
-				Organizer:   reg.Competition.Organizer,
-				StartTime:   reg.Competition.StartTime,
-				EndTime:     reg.Competition.EndTime,
 				Description: reg.Competition.Description,
 				Status:      reg.Competition.Status,
 			}
@@ -530,7 +491,6 @@ func (cc *StudentCompetitionController) GetCompetitionResults(c *gin.Context) {
 			response.Competition = &models.CompetitionResponse{
 				ID:     result.Competition.ID,
 				Title:  result.Competition.Title,
-				Type:   result.Competition.Type,
 				Status: result.Competition.Status,
 			}
 		}

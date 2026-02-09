@@ -11,7 +11,7 @@
  Target Server Version : 80043 (8.0.43)
  File Encoding         : 65001
 
- Date: 31/01/2026 17:46:48
+ Date: 07/02/2026 15:27:08
 */
 
 SET NAMES utf8mb4;
@@ -299,7 +299,7 @@ CREATE TABLE `files`  (
   `category` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '业务分类(document/image/video/code/other)',
   `project_id` bigint NOT NULL COMMENT '所属项目ID',
   `uploaded_by` bigint NOT NULL COMMENT '上传者ID',
-  `status` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'active' COMMENT '状态(active/deleted/rejected)',
+  `status` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'active' COMMENT '状态(active/draft/rejected)',
   `review_status` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT 'approved' COMMENT '审核状态(pending/approved/rejected)',
   `description` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT '文件描述',
   `deleted_at` datetime NULL DEFAULT NULL COMMENT '删除时间',
@@ -314,12 +314,15 @@ CREATE TABLE `files`  (
   INDEX `idx_files_created_at`(`created_at` ASC) USING BTREE,
   CONSTRAINT `fk_files_project` FOREIGN KEY (`project_id`) REFERENCES `projects` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT,
   CONSTRAINT `fk_files_user` FOREIGN KEY (`uploaded_by`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT
-) ENGINE = InnoDB AUTO_INCREMENT = 5 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '项目文件表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 10 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '项目文件表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of files
 -- ----------------------------
-INSERT INTO `files` VALUES (4, '8737dba1-1ec1-4932-822b-b99f84aafac0.jpg', '啦啦啦.jpg', 'uploads/projects/1/8737dba1-1ec1-4932-822b-b99f84aafac0.jpg', 196958, '.jpg', '', '', 1, 4, 'active', '', '', NULL, '2026-01-31 16:45:23', '2026-01-31 17:09:30');
+INSERT INTO `files` VALUES (6, 'cbc4172c-9e21-4b82-bade-9aba1c384c48.jpg', '啦啦啦.jpg', 'uploads/projects/1/cbc4172c-9e21-4b82-bade-9aba1c384c48.jpg', 196958, '.jpg', '', '', 1, 4, '', '', '', '2026-02-02 09:21:23', '2026-02-02 09:21:04', '2026-02-02 09:21:22');
+INSERT INTO `files` VALUES (7, '67dae1ae-1b2d-4d91-a494-c543f62b7672.jpg', '啦啦啦.jpg', 'uploads/projects/1/67dae1ae-1b2d-4d91-a494-c543f62b7672.jpg', 196958, '.jpg', '', '', 1, 4, 'active', '', '', '2026-02-04 09:44:58', '2026-02-02 09:25:47', '2026-02-04 09:44:58');
+INSERT INTO `files` VALUES (8, 'a74a0d5e-dad7-4722-8bcc-4fa4432935b8.jpg', '啦啦啦.jpg', 'uploads/projects/1/a74a0d5e-dad7-4722-8bcc-4fa4432935b8.jpg', 196958, '.jpg', '', '', 1, 4, 'draft', '', '', NULL, '2026-02-04 09:49:32', '2026-02-04 10:42:39');
+INSERT INTO `files` VALUES (9, '28e567bf-baee-474e-9576-e57f2b5f2254.jpg', '啦啦啦.jpg', 'uploads/projects/1/28e567bf-baee-474e-9576-e57f2b5f2254.jpg', 196958, '.jpg', '', '', 1, 4, 'active', '', '', '2026-02-04 15:36:24', '2026-02-04 09:53:40', '2026-02-04 15:36:24');
 
 -- ----------------------------
 -- Table structure for login_logs
@@ -369,12 +372,44 @@ CREATE TABLE `project_extension_applications`  (
   CONSTRAINT `fk_extension_project` FOREIGN KEY (`project_id`) REFERENCES `projects` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT,
   CONSTRAINT `fk_extension_student` FOREIGN KEY (`student_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT,
   CONSTRAINT `fk_extension_teacher` FOREIGN KEY (`teacher_id`) REFERENCES `users` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
-) ENGINE = InnoDB AUTO_INCREMENT = 3 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '项目延期申请记录表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 4 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '项目延期申请记录表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of project_extension_applications
 -- ----------------------------
-INSERT INTO `project_extension_applications` VALUES (2, 1, 4, 2, '2026-01-28 16:04:15', '2025-01-12 08:00:00', '忘记了', 'approved', '', '2026-01-29 09:39:09', '2026-01-28 16:06:34', '2026-01-29 09:39:09');
+INSERT INTO `project_extension_applications` VALUES (2, 1, 4, 2, '2026-01-28 16:04:15', '2025-01-12 08:00:00', '忘记了', 'approved', '可以不用在努力了', '2026-01-29 09:39:09', '2026-01-28 16:06:34', '2026-02-04 14:40:08');
+INSERT INTO `project_extension_applications` VALUES (3, 9, 4, 2, '2026-02-06 15:10:40', '2026-02-07 00:00:00', '5827', 'pending', '', NULL, '2026-02-06 16:07:07', '2026-02-06 16:07:07');
+
+-- ----------------------------
+-- Table structure for project_reviews
+-- ----------------------------
+DROP TABLE IF EXISTS `project_reviews`;
+CREATE TABLE `project_reviews`  (
+  `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '审核记录ID',
+  `project_id` bigint UNSIGNED NOT NULL COMMENT '项目ID',
+  `reviewer_id` bigint UNSIGNED NOT NULL COMMENT '审核教师ID',
+  `status` enum('approved','rejected') CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '审核结果',
+  `comments` text CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL COMMENT '审核意见',
+  `review_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '审核时间',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (`id`) USING BTREE
+) ENGINE = InnoDB AUTO_INCREMENT = 12 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '项目审核记录表' ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Records of project_reviews
+-- ----------------------------
+INSERT INTO `project_reviews` VALUES (1, 2, 2, 'approved', '可以不用在努力了', '2026-02-06 14:48:57', '2026-02-06 14:48:57', '2026-02-06 14:48:57');
+INSERT INTO `project_reviews` VALUES (2, 2, 2, 'approved', '可以不用在努力了', '2026-02-06 14:49:44', '2026-02-06 14:49:44', '2026-02-06 14:49:44');
+INSERT INTO `project_reviews` VALUES (3, 2, 2, 'approved', '可以不用在努力了', '2026-02-06 14:50:07', '2026-02-06 14:50:07', '2026-02-06 14:50:07');
+INSERT INTO `project_reviews` VALUES (4, 9, 2, 'approved', '可以不用在努力了', '2026-02-06 14:52:08', '2026-02-06 14:52:08', '2026-02-06 14:52:08');
+INSERT INTO `project_reviews` VALUES (5, 3, 2, 'approved', '', '2026-02-06 14:59:48', '2026-02-06 14:59:48', '2026-02-06 14:59:48');
+INSERT INTO `project_reviews` VALUES (6, 2, 2, 'approved', '', '2026-02-06 15:05:31', '2026-02-06 15:05:31', '2026-02-06 15:05:31');
+INSERT INTO `project_reviews` VALUES (7, 2, 2, 'approved', '', '2026-02-06 15:06:48', '2026-02-06 15:06:48', '2026-02-06 15:06:48');
+INSERT INTO `project_reviews` VALUES (8, 2, 2, 'approved', '', '2026-02-06 15:08:44', '2026-02-06 15:08:44', '2026-02-06 15:08:44');
+INSERT INTO `project_reviews` VALUES (9, 9, 2, 'approved', '可以不用在努力了', '2026-02-06 15:10:05', '2026-02-06 15:10:05', '2026-02-06 15:10:05');
+INSERT INTO `project_reviews` VALUES (10, 9, 2, 'approved', '可以不用在努力了', '2026-02-06 15:10:41', '2026-02-06 15:10:41', '2026-02-06 15:10:41');
+INSERT INTO `project_reviews` VALUES (11, 3, 2, 'approved', '\n563453453', '2026-02-06 15:11:55', '2026-02-06 15:11:55', '2026-02-06 15:11:55');
 
 -- ----------------------------
 -- Table structure for project_types
@@ -427,7 +462,7 @@ CREATE TABLE `projects`  (
   `submitted_at` datetime NULL DEFAULT NULL COMMENT '提交时间',
   `approved_at` datetime NULL DEFAULT NULL COMMENT '审批时间',
   `approved_by` bigint NULL DEFAULT NULL COMMENT '审批人ID',
-  `rejection_reason` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL COMMENT '拒绝原因',
+  `reviewReason` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL COMMENT '拒绝原因',
   `created_at` datetime NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `updated_at` datetime NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   `deleted` tinyint(1) NULL DEFAULT 0 COMMENT '是否删除',
@@ -448,14 +483,17 @@ CREATE TABLE `projects`  (
   CONSTRAINT `projects_ibfk_2` FOREIGN KEY (`student_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT,
   CONSTRAINT `projects_ibfk_3` FOREIGN KEY (`teacher_id`) REFERENCES `users` (`id`) ON DELETE SET NULL ON UPDATE RESTRICT,
   CONSTRAINT `projects_ibfk_4` FOREIGN KEY (`approved_by`) REFERENCES `users` (`id`) ON DELETE SET NULL ON UPDATE RESTRICT
-) ENGINE = InnoDB AUTO_INCREMENT = 9 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '项目表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 13 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '项目表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of projects
 -- ----------------------------
-INSERT INTO `projects` VALUES (1, '基于深度学习的图像识别系统', '使用深度学习技术开发图像识别系统，提高识别准确率', 5, 4, 2, 'approved', NULL, NULL, NULL, NULL, '2026-01-21 10:07:25', '2026-01-29 09:39:09', 0, 0, '创新项目', '预计6个月完成，分为需求分析、设计、开发、测试四个阶段', 99, '2025-01-12 08:00:00');
-INSERT INTO `projects` VALUES (2, '校园二手交易平台', '开发校园二手交易平台，促进资源循环利用', 8, 5, 3, 'reviewing', NULL, NULL, NULL, NULL, '2026-01-21 10:07:25', '2026-01-26 14:35:56', 0, 0, '创新项目', '预计8个月完成，包括数据采集、预处理、分析、可视化等模块', 50, '2026-02-13 08:52:04');
-INSERT INTO `projects` VALUES (3, '智能校园导航系统', '基于微信小程序的智能校园导航系统', 5, 6, 2, 'reviewing', NULL, NULL, NULL, NULL, '2026-01-21 10:07:25', '2026-01-26 14:35:56', 0, 1, '创新项目', '预计4个月完成，包括用户管理、课程管理、学习跟踪等模块', 80, '2026-01-29 08:52:10');
+INSERT INTO `projects` VALUES (1, '基于深度学习的图像识别系统', '使用深度学习技术开发图像识别系统，提高识别准确率', 5, 4, 2, 'approved', NULL, NULL, NULL, NULL, '2026-01-21 10:07:25', '2026-02-06 15:36:54', 0, 1, '创新项目', '预计6个月完成，分为需求分析、设计、开发、测试四个阶段', 99, '2026-02-06 15:36:54');
+INSERT INTO `projects` VALUES (2, '校园二手交易平台', '开发校园二手交易平台，促进资源循环利用', 8, 5, 3, 'approved', NULL, '2026-02-06 15:08:44', 2, NULL, '2026-01-21 10:07:25', '2026-02-06 15:08:44', 0, 0, '创新项目', '预计8个月完成，包括数据采集、预处理、分析、可视化等模块', 50, '2026-02-06 15:08:43');
+INSERT INTO `projects` VALUES (3, '智能校园导航系统', '基于微信小程序的智能校园导航系统', 5, 6, 2, 'approved', NULL, '2026-02-06 15:11:55', 2, '\n563453453', '2026-01-21 10:07:25', '2026-02-06 15:11:55', 0, 1, '创新项目', '预计4个月完成，包括用户管理、课程管理、学习跟踪等模块', 80, '2026-02-06 15:11:55');
+INSERT INTO `projects` VALUES (9, '我不想努力啦', '2333', NULL, 4, 2, 'approved', '2026-02-04 15:27:04', '2026-02-06 15:10:41', 2, '可以不用在努力了', '2026-02-04 15:13:18', '2026-02-06 15:10:41', 0, 0, '创新项目', '2333', 0, '2026-02-06 15:10:40');
+INSERT INTO `projects` VALUES (11, '1221', 'asdasd', NULL, 4, 3, 'submitted', '2026-02-07 09:22:37', NULL, NULL, '', '2026-02-07 09:08:30', '2026-02-07 09:22:37', 0, 0, '科研', 'asdasdas', 0, '2026-02-07 09:22:37');
+INSERT INTO `projects` VALUES (12, '21321', '2e2', NULL, 4, 3, 'draft', NULL, NULL, NULL, '', '2026-02-07 14:07:18', '2026-02-07 14:07:18', 0, 0, '科研', '2e2', 0, '2026-02-21 00:00:00');
 
 -- ----------------------------
 -- Table structure for roles
@@ -500,7 +538,7 @@ CREATE TABLE `system_logs`  (
   INDEX `idx_system_logs_action_created_at`(`action` ASC, `created_at` ASC) USING BTREE,
   INDEX `idx_system_logs_user_action`(`user_id` ASC, `action` ASC) USING BTREE,
   CONSTRAINT `system_logs_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL ON UPDATE RESTRICT
-) ENGINE = InnoDB AUTO_INCREMENT = 20 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '系统日志表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 25 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '系统日志表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of system_logs
@@ -524,6 +562,11 @@ INSERT INTO `system_logs` VALUES (16, 4, 'project_created', '创建项目: 12312
 INSERT INTO `system_logs` VALUES (17, 4, 'project_created', '创建项目: 12312', NULL, NULL, '2026-01-26 15:35:18');
 INSERT INTO `system_logs` VALUES (18, 4, 'project_created', '创建项目: 12312', NULL, NULL, '2026-01-26 15:36:44');
 INSERT INTO `system_logs` VALUES (19, 4, 'project_created', '创建项目: 12312', NULL, NULL, '2026-01-26 15:37:51');
+INSERT INTO `system_logs` VALUES (20, 4, 'project_created', '创建项目: 我不想努力啦', NULL, NULL, '2026-02-04 15:13:17');
+INSERT INTO `system_logs` VALUES (21, 4, 'project_created', '创建项目: 12', NULL, NULL, '2026-02-04 15:31:14');
+INSERT INTO `system_logs` VALUES (22, 4, 'project_created', '创建项目: 12', NULL, NULL, '2026-02-04 15:55:14');
+INSERT INTO `system_logs` VALUES (23, 4, 'project_created', '创建项目: 1221', NULL, NULL, '2026-02-07 09:08:30');
+INSERT INTO `system_logs` VALUES (24, 4, 'project_created', '创建项目: 21321', NULL, NULL, '2026-02-07 14:07:18');
 
 -- ----------------------------
 -- Table structure for system_settings

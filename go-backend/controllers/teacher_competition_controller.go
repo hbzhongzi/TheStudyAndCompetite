@@ -105,10 +105,6 @@ func (tc *TeacherCompetitionController) GetStudentRegistrations(c *gin.Context) 
 			response.Competition = &models.CompetitionResponse{
 				ID:          reg.Competition.ID,
 				Title:       reg.Competition.Title,
-				Type:        reg.Competition.Type,
-				Organizer:   reg.Competition.Organizer,
-				StartTime:   reg.Competition.StartTime,
-				EndTime:     reg.Competition.EndTime,
 				Description: reg.Competition.Description,
 				Status:      reg.Competition.Status,
 			}
@@ -278,7 +274,6 @@ func (tc *TeacherCompetitionController) ViewStudentSubmission(c *gin.Context) {
 		response.Competition = &models.CompetitionResponse{
 			ID:     submission.Competition.ID,
 			Title:  submission.Competition.Title,
-			Type:   submission.Competition.Type,
 			Status: submission.Competition.Status,
 		}
 	}
@@ -418,7 +413,6 @@ func (tc *TeacherCompetitionController) GetFeedbackHistory(c *gin.Context) {
 			response.Competition = &models.CompetitionResponse{
 				ID:     fb.Competition.ID,
 				Title:  fb.Competition.Title,
-				Type:   fb.Competition.Type,
 				Status: fb.Competition.Status,
 			}
 		}
@@ -522,7 +516,6 @@ func (tc *TeacherCompetitionController) GetStudentResults(c *gin.Context) {
 			response.Competition = &models.CompetitionResponse{
 				ID:     result.Competition.ID,
 				Title:  result.Competition.Title,
-				Type:   result.Competition.Type,
 				Status: result.Competition.Status,
 			}
 		}

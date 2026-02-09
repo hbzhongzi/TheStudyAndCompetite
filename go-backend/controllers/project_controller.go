@@ -1442,18 +1442,8 @@ func (c *ProjectController) GetProjectMilestones(ctx *gin.Context) {
 
 // UpdateProjectProgress 更新项目进度
 func (c *ProjectController) UpdateProjectProgress(ctx *gin.Context) {
-	projectIDStr := ctx.Param("id")
-	projectID, err := strconv.ParseUint(projectIDStr, 10, 32)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{
-			"code":    400,
-			"message": "项目ID格式错误",
-		})
-		return
-	}
-
 	var req models.ProjectProgressUpdateRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
+	if err := ctx.ShouldBind(&req); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{
 			"code":    400,
 			"message": "参数错误: " + err.Error(),
@@ -1461,8 +1451,8 @@ func (c *ProjectController) UpdateProjectProgress(ctx *gin.Context) {
 		return
 	}
 
-	userID := ctx.GetUint("user_id")
-	err = c.projectService.UpdateProjectProgress(uint(projectID), userID, req)
+	userID := ctx.GetUint("userID")
+	err := c.projectService.UpdateProjectProgress(req.ProjectID, userID, req)
 	if err != nil {
 		log.Printf("更新项目进度失败: %v", err)
 		ctx.JSON(http.StatusInternalServerError, gin.H{
@@ -1478,46 +1468,31 @@ func (c *ProjectController) UpdateProjectProgress(ctx *gin.Context) {
 	})
 }
 
-// =============================================
-// 3. 成果文件管理增强 API
-// =============================================
-
-// UploadProjectFile 上传项目文件（增强版）
-func (c *ProjectController) UploadProjectFile(ctx *gin.Context) {
-	projectIDStr := ctx.Param("projectId")
-	projectID, err := strconv.ParseUint(projectIDStr, 10, 32)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{
-			"code":    400,
-			"message": "项目ID格式错误",
-		})
-		return
-	}
-
-	var req models.ProjectFileUploadRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
+// 学生和教师获取指定项目的进度
+func (c *ProjectController) GetProjectProgress(ctx *gin.Context) {
+	var req models.ProjectProgressRequest
+	if err := ctx.ShouldBind(&req); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{
 			"code":    400,
 			"message": "参数错误: " + err.Error(),
 		})
 		return
 	}
-
-	userID := ctx.GetUint("user_id")
-	file, err := c.projectService.UploadProjectFile(uint(projectID), userID, req)
+	userID := ctx.GetUint("userID")
+	progress, err := c.projectService.GetProjectProgress(req.ProjectID, userID, req.Role)
 	if err != nil {
-		log.Printf("上传项目文件失败: %v", err)
+		log.Printf("获取项目进度失败: %v", err)
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"code":    500,
-			"message": "上传项目文件失败: " + err.Error(),
+			"message": "获取项目进度失败: " + err.Error(),
 		})
 		return
 	}
 
 	ctx.JSON(http.StatusOK, gin.H{
 		"code":    200,
-		"message": "上传项目文件成功",
-		"data":    file,
+		"message": "获取项目进度成功",
+		"data":    progress,
 	})
 }
 
@@ -1586,25 +1561,6 @@ func (c *ProjectController) GetProjectFilesByType(ctx *gin.Context) {
 		"code":    200,
 		"message": "获取项目文件成功",
 		"data":    files,
-	})
-}
-
-// GetFileTypeConfigs 获取文件类型配置
-func (c *ProjectController) GetFileTypeConfigs(ctx *gin.Context) {
-	configs, err := c.projectService.GetFileTypeConfigs()
-	if err != nil {
-		log.Printf("获取文件类型配置失败: %v", err)
-		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"code":    500,
-			"message": "获取文件类型配置失败: " + err.Error(),
-		})
-		return
-	}
-
-	ctx.JSON(http.StatusOK, gin.H{
-		"code":    200,
-		"message": "获取文件类型配置成功",
-		"data":    configs,
 	})
 }
 

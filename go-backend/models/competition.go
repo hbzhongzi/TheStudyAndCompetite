@@ -4,79 +4,10 @@ import (
 	"database/sql/driver"
 	"encoding/json"
 	"errors"
-	"strings"
 	"time"
+
+	"gorm.io/datatypes"
 )
-
-// CustomTime 自定义时间类型，支持多种时间格式
-type CustomTime struct {
-	time.Time
-}
-
-// UnmarshalJSON 自定义JSON解析，支持多种时间格式
-func (ct *CustomTime) UnmarshalJSON(data []byte) error {
-	// 移除引号
-	str := strings.Trim(string(data), `"`)
-
-	// 如果为空或null，设置为nil
-	if str == "" || str == "null" {
-		ct.Time = time.Time{}
-		return nil
-	}
-
-	// 尝试多种时间格式
-	formats := []string{
-		"2006-01-02T15:04:05Z07:00", // RFC3339
-		"2006-01-02T15:04:05",       // ISO 8601 without timezone
-		"2006-01-02 15:04:05",       // MySQL datetime format
-		"2006-01-02",                // Date only
-	}
-
-	for _, format := range formats {
-		if t, err := time.Parse(format, str); err == nil {
-			ct.Time = t
-			return nil
-		}
-	}
-
-	return errors.New("unsupported time format")
-}
-
-// MarshalJSON 自定义JSON序列化
-func (ct CustomTime) MarshalJSON() ([]byte, error) {
-	if ct.Time.IsZero() {
-		return []byte("null"), nil
-	}
-	return json.Marshal(ct.Time.Format("2006-01-02T15:04:05Z07:00"))
-}
-
-// Value 实现driver.Valuer接口
-func (ct CustomTime) Value() (driver.Value, error) {
-	if ct.Time.IsZero() {
-		return nil, nil
-	}
-	return ct.Time, nil
-}
-
-// Scan 实现sql.Scanner接口
-func (ct *CustomTime) Scan(value interface{}) error {
-	if value == nil {
-		ct.Time = time.Time{}
-		return nil
-	}
-
-	switch v := value.(type) {
-	case time.Time:
-		ct.Time = v
-		return nil
-	case []byte:
-		return ct.UnmarshalJSON(v)
-	case string:
-		return ct.UnmarshalJSON([]byte(v))
-	default:
-		return errors.New("cannot scan non-time value into CustomTime")
-	}
-}
 
 // CompetitionUserResponse 竞赛模块用户响应（简化版）
 type CompetitionUserResponse struct {
@@ -93,37 +24,25 @@ type CompetitionUserResponse struct {
 
 // Competition 竞赛信息表
 type Competition struct {
-	ID                  uint       `json:"id" gorm:"primaryKey;autoIncrement"`
-	Title               string     `json:"title" gorm:"type:varchar(255);not null;comment:竞赛标题"`
-	Type                string     `json:"type" gorm:"type:varchar(50);comment:竞赛类型"`
-	Organizer           string     `json:"organizer" gorm:"type:varchar(100);comment:主办方"`
-	RegistrationStart   *time.Time `json:"registration_start" gorm:"comment:报名开始时间"`
-	RegistrationEnd     *time.Time `json:"registration_end" gorm:"comment:报名截止时间"`
-	StartTime           *time.Time `json:"start_time" gorm:"comment:比赛开始时间"`
-	EndTime             *time.Time `json:"end_time" gorm:"comment:比赛结束时间"`
-	Description         string     `json:"description" gorm:"type:text;comment:竞赛描述"`
-	Attachment          string     `json:"attachment" gorm:"type:varchar(255);comment:附件URL"`
-	IsOpen              bool       `json:"is_open" gorm:"default:true;comment:是否开放报名"`
-	MaxParticipants     *int       `json:"max_participants" gorm:"comment:最大参与人数"`
-	CurrentParticipants int        `json:"current_participants" gorm:"default:0;comment:当前参与人数"`
-	Status              string     `json:"status" gorm:"type:enum('draft','registration','submission','review','completed');default:draft;comment:竞赛状态"`
-	AwardConfig         JSONMap    `json:"award_config" gorm:"column:award_config;type:json;comment:获奖配置"`
-	DepartmentLimit     string     `json:"department_limit" gorm:"column:department_limit;type:varchar(255);comment:院系限制（可选）"`
-	TeacherLimit        bool       `json:"teacher_limit" gorm:"column:teacher_limit;default:false;comment:是否需要绑定教师才能报名"`
-	CreatedBy           uint       `json:"created_by" gorm:"not null;comment:创建者ID"`
-	CreatedAt           time.Time  `json:"created_at" gorm:"autoCreateTime"`
-	UpdatedAt           time.Time  `json:"updated_at" gorm:"autoUpdateTime"`
-
-	// 关联关系
-	CreatedByUser *User                     `json:"created_by_user" gorm:"foreignKey:CreatedBy"`
-	Registrations []CompetitionRegistration `json:"registrations" gorm:"foreignKey:CompetitionID"`
-	Submissions   []CompetitionSubmission   `json:"submissions" gorm:"foreignKey:CompetitionID"`
-	Feedback      []CompetitionFeedback     `json:"feedback" gorm:"foreignKey:CompetitionID"`
-	Results       []CompetitionResult       `json:"results" gorm:"foreignKey:CompetitionID"`
-	Judges        []CompetitionJudge        `json:"judges" gorm:"foreignKey:CompetitionID"`
+	ID                  uint           `gorm:"column:id;primaryKey" json:"id"`
+	Title               string         `gorm:"column:title" json:"title"`
+	Description         string         `gorm:"column:description" json:"description"`
+	Level               string         `gorm:"column:level" json:"level"`
+	Category            string         `gorm:"column:category" json:"category"`
+	RegistrationStart   *time.Time     `gorm:"column:registration_start" json:"registrationStart"`
+	RegistrationEnd     *time.Time     `gorm:"column:registration_end" json:"registrationEnd"`
+	SubmissionStart     *time.Time     `gorm:"column:submission_start" json:"submissionStart"`
+	SubmissionEnd       *time.Time     `gorm:"column:submission_end" json:"submissionEnd"`
+	MaxParticipants     int            `gorm:"column:max_participants" json:"maxParticipants"`
+	CurrentParticipants int            `gorm:"column:current_participants" json:"currentParticipants"`
+	IsOpen              bool           `gorm:"column:is_open" json:"isOpen"`
+	Status              string         `gorm:"column:status" json:"status"`
+	AwardConfig         datatypes.JSON `gorm:"column:award_config" json:"awardConfig"`
+	CreatedBy           uint           `gorm:"column:created_by" json:"createdBy"`
+	CreatedAt           time.Time      `gorm:"column:created_at" json:"createdAt"`
+	UpdatedAt           time.Time      `gorm:"column:updated_at" json:"updatedAt"`
 }
 
-// TableName 指定表名
 func (Competition) TableName() string {
 	return "competitions"
 }
@@ -309,38 +228,36 @@ func (j *JSONMap) Scan(value interface{}) error {
 	return json.Unmarshal(bytes, j)
 }
 
-// CompetitionCreateRequest 创建竞赛请求
 type CompetitionCreateRequest struct {
-	Title             string      `json:"title" binding:"required"`
-	Type              string      `json:"type"`
-	Organizer         string      `json:"organizer"`
-	RegistrationStart *CustomTime `json:"registration_start"`
-	RegistrationEnd   *CustomTime `json:"registration_end"`
-	StartTime         *CustomTime `json:"start_time"`
-	EndTime           *CustomTime `json:"end_time"`
-	Description       string      `json:"description"`
-	Attachment        string      `json:"attachment"`
-	IsOpen            bool        `json:"is_open"`
-	MaxParticipants   *int        `json:"max_participants"`
-	Status            string      `json:"status" binding:"omitempty,oneof=draft registration submission review completed"`
-	AwardConfig       JSONMap     `json:"award_config"`
+	Title             string    `json:"title" binding:"required"`
+	Type              string    `json:"type"`
+	Organizer         string    `json:"organizer"`
+	RegistrationStart time.Time `json:"registration_start"`
+	RegistrationEnd   time.Time `json:"registration_end"`
+	StartTime         time.Time `json:"start_time"`
+	EndTime           time.Time `json:"end_time"`
+	Level             string    `json:"level"`
+	Description       string    `json:"description"`
+	Attachment        string    `json:"attachment"`
+	IsOpen            bool      `json:"is_open"`
+	MaxParticipants   int       `json:"max_participants"`
 }
 
 // CompetitionUpdateRequest 更新竞赛请求
 type CompetitionUpdateRequest struct {
-	Title             string      `json:"title"`
-	Type              string      `json:"type"`
-	Organizer         string      `json:"organizer"`
-	RegistrationStart *CustomTime `json:"registration_start"`
-	RegistrationEnd   *CustomTime `json:"registration_end"`
-	StartTime         *CustomTime `json:"start_time"`
-	EndTime           *CustomTime `json:"end_time"`
-	Description       string      `json:"description"`
-	Attachment        string      `json:"attachment"`
-	IsOpen            *bool       `json:"is_open"`
-	MaxParticipants   *int        `json:"max_participants"`
-	Status            string      `json:"status" binding:"omitempty,oneof=draft registration submission review completed"`
-	AwardConfig       JSONMap     `json:"award_config"`
+	Title             string     `json:"title"`
+	Type              string     `json:"type"`
+	Organizer         string     `json:"organizer"`
+	RegistrationStart time.Time  `json:"registration_start"`
+	RegistrationEnd   time.Time  `json:"registration_end"`
+	StartTime         *time.Time `json:"start_time"`
+	EndTime           *time.Time `json:"end_time"`
+	Description       string     `json:"description"`
+	Attachment        string     `json:"attachment"`
+	IsOpen            *bool      `json:"is_open"`
+	MaxParticipants   *int       `json:"max_participants"`
+	Status            string     `json:"status" binding:"omitempty,oneof=draft registration submission review completed"`
+	AwardConfig       JSONMap    `json:"award_config"`
 }
 
 // CompetitionRegistrationRequest 竞赛报名请求

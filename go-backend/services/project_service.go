@@ -1407,46 +1407,97 @@ func (s *ProjectService) GetProjectMilestones(projectID uint) ([]models.ProjectM
 	return responses, nil
 }
 
-// UpdateProjectProgress 更新项目进度
-func (s *ProjectService) UpdateProjectProgress(projectID uint, userID uint, req models.ProjectProgressUpdateRequest) error {
-	// 检查项目是否存在
+// UpdateProjectProgress 学生更新项目进度
+func (s *ProjectService) UpdateProjectProgress(
+	projectID uint,
+	userID uint,
+	req models.ProjectProgressUpdateRequest,
+) error {
+
+	// 参数校验
+	if req.Progress < 0 || req.Progress > 100 {
+		return errors.New("进度必须在 0-100 之间")
+	}
 	var project models.Project
+	// 查询项目
 	if err := s.db.First(&project, projectID).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return errors.New("项目不存在")
 		}
-		return nil
+		return err
 	}
-
-	// 检查权限：只有项目相关人员可以更新进度
-	if project.StudentID != userID && project.TeacherID != userID {
+	//权限校验
+	if project.StudentID != userID {
 		return errors.New("无权限更新此项目进度")
 	}
+	// 状态校验
+	if project.Status != "approved" {
+		return errors.New("只有已通过的项目可以更新进度")
+	}
+	//使用事务保证一致性
+	return s.db.Transaction(func(tx *gorm.DB) error {
+		// 5.1 插入进度记录
+		progressLog := models.ProjectProgress{
+			ProjectID: projectID,
+			Progress:  req.Progress,
+			Comments:  req.Comments,
+		}
+		if err := tx.Create(&progressLog).Error; err != nil {
+			return err
+		}
+		// 5.2 更新项目当前进度
+		updates := map[string]interface{}{
+			"progress":   req.Progress,
+			"updated_at": time.Now(),
+		}
+		// 若首次完成，自动标记完成
+		if req.Progress >= 100 && project.Status != "completed" {
+			updates["status"] = "completed"
+			updates["actual_end_date"] = time.Now()
+		}
+		if err := tx.Model(&models.Project{}).
+			Where("id = ?", projectID).
+			Updates(updates).Error; err != nil {
+			return err
+		}
+		return nil
+	})
+}
 
-	// 检查项目状态：只有进行中的项目可以更新进度
-	if project.Status != "in_progress" && project.Status != "approved" {
-		return errors.New("只有进行中的项目可以更新进度")
+// 学生和教师获取指定项目的进度
+func (s *ProjectService) GetProjectProgress(
+	projectID uint,
+	userID uint,
+	role string,
+) ([]models.ProjectProgress, error) {
+	var project models.Project
+	// 查询项目
+	if err := s.db.First(&project, projectID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.New("项目不存在")
+		}
+		return nil, err
+	}
+	// 1. 权限校验
+	q := s.db.Where("id = ?", projectID)
+
+	switch role {
+	case "student":
+		q = q.Where("student_id = ?", userID)
+	case "teacher":
+		q = q.Where("teacher_id = ?", userID)
+	default:
+		return nil, errors.New("不支持的角色类型")
 	}
 
-	// 更新项目进度
-	updates := map[string]interface{}{
-		"progress":   req.Progress,
-		"updated_at": time.Now(),
-	}
+	// 2. 查询进度记录
+	var logs []models.ProjectProgress
+	err := s.db.
+		Where("project_id = ?", projectID).
+		Order("created_at asc").
+		Find(&logs).Error
 
-	// 如果进度为100%，自动标记为完成
-	if req.Progress >= 100 {
-		updates["status"] = "completed"
-		updates["actual_end_date"] = time.Now()
-	}
-
-	if err := s.db.Model(&project).Updates(updates).Error; err != nil {
-		log.Printf("更新项目进度失败: %v", err)
-		return errors.New("更新项目进度失败")
-	}
-
-	log.Printf("项目进度更新成功 - 项目ID: %d, 新进度: %d%%", projectID, req.Progress)
-	return nil
+	return logs, err
 }
 
 // =============================================

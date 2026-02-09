@@ -34,6 +34,27 @@ type Project struct {
 	Teacher *User `gorm:"foreignKey:TeacherID" json:"teacher,omitempty"`
 	// 项目文件（一对多）
 	Files []File `gorm:"foreignKey:ProjectID;constraint:OnDelete:CASCADE" json:"files"`
+	// 项目进度记录（一对多）
+	ProgressLogs []ProjectProgress `gorm:"foreignKey:ProjectID" json:"progressLogs"`
+}
+
+// ProjectProgress 项目进度记录表
+type ProjectProgress struct {
+	ID        uint `gorm:"primaryKey;autoIncrement;column:id" json:"id"`
+	ProjectID uint `gorm:"not null;column:project_id" json:"projectId"`
+
+	Progress int    `gorm:"column:progress;not null" json:"progress"`
+	Comments string `gorm:"column:comments;type:text" json:"comments"`
+
+	CreatedAt time.Time `gorm:"column:created_at;autoCreateTime" json:"createdAt"`
+	UpdatedAt time.Time `gorm:"column:updated_at;autoUpdateTime" json:"updatedAt"`
+
+	// 关联
+	Project *Project `gorm:"foreignKey:ProjectID" json:"project,omitempty"`
+}
+
+func (ProjectProgress) TableName() string {
+	return "project_progress"
 }
 
 func (Project) TableName() string {
@@ -659,7 +680,14 @@ type ProjectExtensionResponse struct {
 
 // ProjectProgressUpdateRequest 项目进度更新请求
 type ProjectProgressUpdateRequest struct {
-	Progress int `json:"progress" binding:"required,min=0,max=100"`
+	Progress  int    `json:"progress" binding:"required,min=0,max=100"`
+	Comments  string `json:"comments"`
+	ProjectID uint   `json:"projectId" binding:"required"`
+}
+
+type ProjectProgressRequest struct {
+	ProjectID uint   `json:"projectId" binding:"required"`
+	Role      string `json:"role" binding:"required,oneof=student teacher"`
 }
 
 // =============================================

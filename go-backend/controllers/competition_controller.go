@@ -19,117 +19,79 @@ func NewCompetitionController(db *gorm.DB) *CompetitionController {
 	return &CompetitionController{db: db}
 }
 
-// GetCompetitionList 获取竞赛列表
+// GetCompetitionList 获取竞赛列表（单表查询）
 func (c *CompetitionController) GetCompetitionList(ctx *gin.Context) {
-	var competitions []models.Competition
+	var list []models.Competition
 	var total int64
 
-	// 获取查询参数
+	// 分页参数
 	page, _ := strconv.Atoi(ctx.DefaultQuery("page", "1"))
 	size, _ := strconv.Atoi(ctx.DefaultQuery("size", "10"))
-	search := ctx.Query("search")
-	competitionType := ctx.Query("type")
-	status := ctx.Query("status")
-	isOpen := ctx.Query("is_open")
-
-	// 构建查询条件
-	query := c.db.Model(&models.Competition{}).Preload("CreatedByUser.Profile")
-
-	if search != "" {
-		query = query.Where("title LIKE ? OR description LIKE ?", "%"+search+"%", "%"+search+"%")
+	if page < 1 {
+		page = 1
+	}
+	if size < 1 {
+		size = 10
 	}
 
-	if competitionType != "" {
-		query = query.Where("type = ?", competitionType)
+	// 查询参数
+	search := ctx.Query("search")
+	level := ctx.Query("level")
+	category := ctx.Query("category")
+	status := ctx.Query("status")
+
+	query := c.db.Model(&models.Competition{})
+
+	// 模糊搜索
+	if search != "" {
+		query = query.Where(
+			"title LIKE ? OR description LIKE ?",
+			"%"+search+"%",
+			"%"+search+"%",
+		)
+	}
+
+	if level != "" {
+		query = query.Where("level = ?", level)
+	}
+
+	if category != "" {
+		query = query.Where("category = ?", category)
 	}
 
 	if status != "" {
 		query = query.Where("status = ?", status)
 	}
 
-	if isOpen != "" {
-		if isOpen == "true" {
-			query = query.Where("is_open = ?", true)
-		} else {
-			query = query.Where("is_open = ?", false)
-		}
-	}
-
-	// 获取总数
+	// 总数
 	if err := query.Count(&total).Error; err != nil {
-		log.Printf("获取竞赛总数失败: %v", err)
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"code":    500,
-			"message": "获取竞赛列表失败",
+			"message": "获取竞赛总数失败",
 		})
 		return
 	}
 
-	// 分页查询
+	// 分页数据
 	offset := (page - 1) * size
-	if err := query.Offset(offset).Limit(size).Order("created_at DESC").Find(&competitions).Error; err != nil {
-		log.Printf("获取竞赛列表失败: %v", err)
+	if err := query.
+		Order("created_at DESC").
+		Offset(offset).
+		Limit(size).
+		Find(&list).Error; err != nil {
+
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"code":    500,
 			"message": "获取竞赛列表失败",
 		})
 		return
-	}
-
-	// 构建响应数据
-	var responses []models.CompetitionResponse
-	for _, comp := range competitions {
-		// 获取关联数据统计
-		var registrationCount, submissionCount, resultCount int64
-		c.db.Model(&models.CompetitionRegistration{}).Where("competition_id = ?", comp.ID).Count(&registrationCount)
-		c.db.Model(&models.CompetitionSubmission{}).Where("competition_id = ?", comp.ID).Count(&submissionCount)
-		c.db.Model(&models.CompetitionResult{}).Where("competition_id = ?", comp.ID).Count(&resultCount)
-
-		response := models.CompetitionResponse{
-			ID:                  comp.ID,
-			Title:               comp.Title,
-			Type:                comp.Type,
-			Organizer:           comp.Organizer,
-			StartTime:           comp.StartTime,
-			EndTime:             comp.EndTime,
-			Description:         comp.Description,
-			Attachment:          comp.Attachment,
-			IsOpen:              comp.IsOpen,
-			MaxParticipants:     comp.MaxParticipants,
-			CurrentParticipants: comp.CurrentParticipants,
-			CreatedBy:           comp.CreatedBy,
-			CreatedAt:           comp.CreatedAt,
-			UpdatedAt:           comp.UpdatedAt,
-			RegistrationCount:   int(registrationCount),
-			SubmissionCount:     int(submissionCount),
-			ResultCount:         int(resultCount),
-		}
-
-		if comp.CreatedByUser != nil {
-			response.CreatedByUser = &models.CompetitionUserResponse{
-				ID:         comp.CreatedByUser.ID,
-				Username:   comp.CreatedByUser.Username,
-				Email:      comp.CreatedByUser.Email,
-				Status:     comp.CreatedByUser.Status,
-				CreateTime: comp.CreatedByUser.CreateTime,
-			}
-			// 如果有用户资料信息，添加到响应中
-			if comp.CreatedByUser.Profile != nil {
-				response.CreatedByUser.RealName = comp.CreatedByUser.Profile.RealName
-				response.CreatedByUser.Phone = comp.CreatedByUser.Profile.Phone
-				response.CreatedByUser.Department = comp.CreatedByUser.Profile.Department
-				response.CreatedByUser.StudentID = comp.CreatedByUser.Profile.StudentID
-			}
-		}
-
-		responses = append(responses, response)
 	}
 
 	ctx.JSON(http.StatusOK, gin.H{
 		"code":    200,
 		"message": "获取竞赛列表成功",
 		"data": gin.H{
-			"list":  responses,
+			"list":  list,
 			"total": total,
 			"page":  page,
 			"size":  size,
@@ -137,83 +99,10 @@ func (c *CompetitionController) GetCompetitionList(ctx *gin.Context) {
 	})
 }
 
-// GetCompetitionByID 根据ID获取竞赛详情
-func (c *CompetitionController) GetCompetitionByID(ctx *gin.Context) {
-	idStr := ctx.Param("id")
-	id, err := strconv.ParseUint(idStr, 10, 32)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{
-			"code":    400,
-			"message": "竞赛ID格式错误",
-		})
-		return
-	}
-
-	var competition models.Competition
-	if err := c.db.Preload("CreatedByUser.Profile").First(&competition, id).Error; err != nil {
-		log.Printf("获取竞赛详情失败: %v", err)
-		ctx.JSON(http.StatusNotFound, gin.H{
-			"code":    404,
-			"message": "竞赛不存在",
-		})
-		return
-	}
-
-	// 获取关联数据统计
-	var registrationCount, submissionCount, resultCount int64
-	c.db.Model(&models.CompetitionRegistration{}).Where("competition_id = ?", competition.ID).Count(&registrationCount)
-	c.db.Model(&models.CompetitionSubmission{}).Where("competition_id = ?", competition.ID).Count(&submissionCount)
-	c.db.Model(&models.CompetitionResult{}).Where("competition_id = ?", competition.ID).Count(&resultCount)
-
-	response := models.CompetitionResponse{
-		ID:                  competition.ID,
-		Title:               competition.Title,
-		Type:                competition.Type,
-		Organizer:           competition.Organizer,
-		StartTime:           competition.StartTime,
-		EndTime:             competition.EndTime,
-		Description:         competition.Description,
-		Attachment:          competition.Attachment,
-		IsOpen:              competition.IsOpen,
-		MaxParticipants:     competition.MaxParticipants,
-		CurrentParticipants: competition.CurrentParticipants,
-		CreatedBy:           competition.CreatedBy,
-		CreatedAt:           competition.CreatedAt,
-		UpdatedAt:           competition.UpdatedAt,
-		RegistrationCount:   int(registrationCount),
-		SubmissionCount:     int(submissionCount),
-		ResultCount:         int(resultCount),
-	}
-
-	if competition.CreatedByUser != nil {
-		response.CreatedByUser = &models.CompetitionUserResponse{
-			ID:         competition.CreatedByUser.ID,
-			Username:   competition.CreatedByUser.Username,
-			Email:      competition.CreatedByUser.Email,
-			Status:     competition.CreatedByUser.Status,
-			CreateTime: competition.CreatedByUser.CreateTime,
-		}
-		// 如果有用户档案信息，添加详细信息
-		if competition.CreatedByUser.Profile != nil {
-			response.CreatedByUser.RealName = competition.CreatedByUser.Profile.RealName
-			response.CreatedByUser.Phone = competition.CreatedByUser.Profile.Phone
-			response.CreatedByUser.Department = competition.CreatedByUser.Profile.Department
-			response.CreatedByUser.StudentID = competition.CreatedByUser.Profile.StudentID
-		}
-	}
-
-	ctx.JSON(http.StatusOK, gin.H{
-		"code":    200,
-		"message": "获取竞赛详情成功",
-		"data":    response,
-	})
-}
-
 // CreateCompetition 创建竞赛
 func (c *CompetitionController) CreateCompetition(ctx *gin.Context) {
 	var req models.CompetitionCreateRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		log.Printf("参数绑定失败: %v", err)
+	if err := ctx.ShouldBind(&req); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{
 			"code":    400,
 			"message": "参数错误: " + err.Error(),
@@ -221,7 +110,7 @@ func (c *CompetitionController) CreateCompetition(ctx *gin.Context) {
 		return
 	}
 
-	// 获取当前用户ID
+	// 获取当前用户
 	userID, exists := ctx.Get("userID")
 	if !exists {
 		ctx.JSON(http.StatusUnauthorized, gin.H{
@@ -231,97 +120,93 @@ func (c *CompetitionController) CreateCompetition(ctx *gin.Context) {
 		return
 	}
 
-	// 时间验证逻辑
 	now := time.Now()
 
-	// 移除报名时间不能早于当前时间的限制，允许设置过去的报名时间
-	// 只保留时间逻辑关系验证
+	// ===== time.Time → *time.Time（基于 IsZero）=====
+	var (
+		regStart *time.Time
+		regEnd   *time.Time
+		subStart *time.Time
+		subEnd   *time.Time
+	)
 
-	// 检查时间逻辑关系
-	if req.RegistrationStart != nil && req.RegistrationEnd != nil {
-		if req.RegistrationStart.Time.After(req.RegistrationEnd.Time) {
-			ctx.JSON(http.StatusBadRequest, gin.H{
-				"code":    400,
-				"message": "报名开始时间不能晚于报名截止时间",
-			})
-			return
-		}
+	if !req.RegistrationStart.IsZero() {
+		regStart = &req.RegistrationStart
 	}
 
-	if req.RegistrationEnd != nil && req.StartTime != nil {
-		if req.RegistrationEnd.Time.After(req.StartTime.Time) {
-			ctx.JSON(http.StatusBadRequest, gin.H{
-				"code":    400,
-				"message": "报名截止时间不能晚于比赛开始时间",
-			})
-			return
-		}
+	if !req.RegistrationEnd.IsZero() {
+		regEnd = &req.RegistrationEnd
 	}
 
-	if req.StartTime != nil && req.EndTime != nil {
-		if req.StartTime.Time.After(req.EndTime.Time) {
-			ctx.JSON(http.StatusBadRequest, gin.H{
-				"code":    400,
-				"message": "比赛开始时间不能晚于比赛结束时间",
-			})
-			return
-		}
+	if !req.StartTime.IsZero() {
+		subStart = &req.StartTime
 	}
 
-	// 如果设置了比赛开始时间，检查是否在将来
-	if req.StartTime != nil && req.StartTime.Before(now) {
+	if !req.EndTime.IsZero() {
+		subEnd = &req.EndTime
+	}
+
+	// ===== 时间逻辑校验 =====
+
+	if regStart != nil && regEnd != nil && regStart.After(*regEnd) {
 		ctx.JSON(http.StatusBadRequest, gin.H{
 			"code":    400,
-			"message": "比赛开始时间不能早于当前时间",
+			"message": "报名开始时间不能晚于报名截止时间",
 		})
 		return
 	}
 
-	// 如果设置了比赛结束时间，检查是否在将来
-	if req.EndTime != nil && req.EndTime.Before(now) {
+	if regEnd != nil && subStart != nil && regEnd.After(*subStart) {
 		ctx.JSON(http.StatusBadRequest, gin.H{
 			"code":    400,
-			"message": "比赛结束时间不能早于当前时间",
+			"message": "报名截止时间不能晚于提交开始时间",
 		})
 		return
 	}
 
-	// 转换CustomTime为time.Time
-	var registrationStart, registrationEnd, startTime, endTime *time.Time
-
-	if req.RegistrationStart != nil {
-		registrationStart = &req.RegistrationStart.Time
-	}
-	if req.RegistrationEnd != nil {
-		registrationEnd = &req.RegistrationEnd.Time
-	}
-	if req.StartTime != nil {
-		startTime = &req.StartTime.Time
-	}
-	if req.EndTime != nil {
-		endTime = &req.EndTime.Time
+	if subStart != nil && subEnd != nil && subStart.After(*subEnd) {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"code":    400,
+			"message": "提交开始时间不能晚于提交截止时间",
+		})
+		return
 	}
 
+	if subStart != nil && subStart.Before(now) {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"code":    400,
+			"message": "提交开始时间不能早于当前时间",
+		})
+		return
+	}
+
+	if subEnd != nil && subEnd.Before(now) {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"code":    400,
+			"message": "提交截止时间不能早于当前时间",
+		})
+		return
+	}
+
+	// ===== 构建模型 =====
 	competition := models.Competition{
 		Title:             req.Title,
-		Type:              req.Type,
-		Organizer:         req.Organizer,
-		RegistrationStart: registrationStart,
-		RegistrationEnd:   registrationEnd,
-		StartTime:         startTime,
-		EndTime:           endTime,
 		Description:       req.Description,
-		Attachment:        req.Attachment,
-		IsOpen:            req.IsOpen,
+		Category:          req.Type,
+		RegistrationStart: regStart,
+		Level:             req.Level,
+		RegistrationEnd:   regEnd,
+		SubmissionStart:   subStart,
+		SubmissionEnd:     subEnd,
 		MaxParticipants:   req.MaxParticipants,
+		Status:            "draft",
 		CreatedBy:         userID.(uint),
 	}
 
 	if err := c.db.Create(&competition).Error; err != nil {
-		log.Printf("创建竞赛失败: %v", err)
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"code":    500,
-			"message": "创建竞赛失败",
+			"message": err.Error(),
 		})
 		return
 	}
@@ -329,146 +214,6 @@ func (c *CompetitionController) CreateCompetition(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, gin.H{
 		"code":    200,
 		"message": "创建竞赛成功",
-		"data":    competition,
-	})
-}
-
-// UpdateCompetition 更新竞赛
-func (c *CompetitionController) UpdateCompetition(ctx *gin.Context) {
-	idStr := ctx.Param("id")
-	id, err := strconv.ParseUint(idStr, 10, 32)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{
-			"code":    400,
-			"message": "竞赛ID格式错误",
-		})
-		return
-	}
-
-	var req models.CompetitionUpdateRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		log.Printf("参数绑定失败: %v", err)
-		ctx.JSON(http.StatusBadRequest, gin.H{
-			"code":    400,
-			"message": "参数错误: " + err.Error(),
-		})
-		return
-	}
-
-	// 检查竞赛是否存在
-	var competition models.Competition
-	if err := c.db.First(&competition, id).Error; err != nil {
-		log.Printf("竞赛不存在: %v", err)
-		ctx.JSON(http.StatusNotFound, gin.H{
-			"code":    404,
-			"message": "竞赛不存在",
-		})
-		return
-	}
-
-	// 时间验证逻辑
-	now := time.Now()
-
-	// 移除报名时间不能早于当前时间的限制，允许设置过去的报名时间
-	// 只保留时间逻辑关系验证
-
-	// 检查时间逻辑关系
-	if req.RegistrationStart != nil && req.RegistrationEnd != nil {
-		if req.RegistrationStart.Time.After(req.RegistrationEnd.Time) {
-			ctx.JSON(http.StatusBadRequest, gin.H{
-				"code":    400,
-				"message": "报名开始时间不能晚于报名截止时间",
-			})
-			return
-		}
-	}
-
-	if req.RegistrationEnd != nil && req.StartTime != nil {
-		if req.RegistrationEnd.Time.After(req.StartTime.Time) {
-			ctx.JSON(http.StatusBadRequest, gin.H{
-				"code":    400,
-				"message": "报名截止时间不能晚于比赛开始时间",
-			})
-			return
-		}
-	}
-
-	if req.StartTime != nil && req.EndTime != nil {
-		if req.StartTime.Time.After(req.EndTime.Time) {
-			ctx.JSON(http.StatusBadRequest, gin.H{
-				"code":    400,
-				"message": "比赛开始时间不能晚于比赛结束时间",
-			})
-			return
-		}
-	}
-
-	// 如果设置了比赛开始时间，检查是否在将来
-	if req.StartTime != nil && req.StartTime.Time.Before(now) {
-		ctx.JSON(http.StatusBadRequest, gin.H{
-			"code":    400,
-			"message": "比赛开始时间不能早于当前时间",
-		})
-		return
-	}
-
-	// 如果设置了比赛结束时间，检查是否在将来
-	if req.EndTime != nil && req.EndTime.Time.Before(now) {
-		ctx.JSON(http.StatusBadRequest, gin.H{
-			"code":    400,
-			"message": "比赛结束时间不能早于当前时间",
-		})
-		return
-	}
-
-	// 更新竞赛信息
-	updates := make(map[string]interface{})
-	if req.Title != "" {
-		updates["title"] = req.Title
-	}
-	if req.Type != "" {
-		updates["type"] = req.Type
-	}
-	if req.Organizer != "" {
-		updates["organizer"] = req.Organizer
-	}
-	if req.RegistrationStart != nil {
-		updates["registration_start"] = req.RegistrationStart.Time
-	}
-	if req.RegistrationEnd != nil {
-		updates["registration_end"] = req.RegistrationEnd.Time
-	}
-	if req.StartTime != nil {
-		updates["start_time"] = req.StartTime.Time
-	}
-	if req.EndTime != nil {
-		updates["end_time"] = req.EndTime.Time
-	}
-	if req.Description != "" {
-		updates["description"] = req.Description
-	}
-	if req.Attachment != "" {
-		updates["attachment"] = req.Attachment
-	}
-	if req.IsOpen != nil {
-		updates["is_open"] = *req.IsOpen
-	}
-	if req.MaxParticipants != nil {
-		updates["max_participants"] = *req.MaxParticipants
-	}
-
-	if err := c.db.Model(&competition).Updates(updates).Error; err != nil {
-		log.Printf("更新竞赛失败: %v", err)
-		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"code":    500,
-			"message": "更新竞赛失败",
-		})
-		return
-	}
-
-	ctx.JSON(http.StatusOK, gin.H{
-		"code":    200,
-		"message": "更新竞赛成功",
 		"data":    competition,
 	})
 }
@@ -641,38 +386,16 @@ func (c *CompetitionController) GetPublicCompetitions(ctx *gin.Context) {
 		c.db.Model(&models.CompetitionRegistration{}).Where("competition_id = ?", comp.ID).Count(&registrationCount)
 
 		response := models.CompetitionResponse{
-			ID:                  comp.ID,
-			Title:               comp.Title,
-			Type:                comp.Type,
-			Organizer:           comp.Organizer,
-			StartTime:           comp.StartTime,
-			EndTime:             comp.EndTime,
-			Description:         comp.Description,
-			Attachment:          comp.Attachment,
-			IsOpen:              comp.IsOpen,
-			MaxParticipants:     comp.MaxParticipants,
+			ID:    comp.ID,
+			Title: comp.Title,
+
+			Description: comp.Description,
+
 			CurrentParticipants: comp.CurrentParticipants,
 			CreatedBy:           comp.CreatedBy,
 			CreatedAt:           comp.CreatedAt,
 			UpdatedAt:           comp.UpdatedAt,
 			RegistrationCount:   int(registrationCount),
-		}
-
-		if comp.CreatedByUser != nil {
-			response.CreatedByUser = &models.CompetitionUserResponse{
-				ID:         comp.CreatedByUser.ID,
-				Username:   comp.CreatedByUser.Username,
-				Email:      comp.CreatedByUser.Email,
-				Status:     comp.CreatedByUser.Status,
-				CreateTime: comp.CreatedByUser.CreateTime,
-			}
-			// 如果有用户档案信息，添加详细信息
-			if comp.CreatedByUser.Profile != nil {
-				response.CreatedByUser.RealName = comp.CreatedByUser.Profile.RealName
-				response.CreatedByUser.Phone = comp.CreatedByUser.Profile.Phone
-				response.CreatedByUser.Department = comp.CreatedByUser.Profile.Department
-				response.CreatedByUser.StudentID = comp.CreatedByUser.Profile.StudentID
-			}
 		}
 
 		responses = append(responses, response)
@@ -723,29 +446,12 @@ func (c *CompetitionController) RegisterCompetition(ctx *gin.Context) {
 		return
 	}
 
-	if !competition.IsOpen {
-		ctx.JSON(http.StatusBadRequest, gin.H{
-			"code":    400,
-			"message": "该竞赛已关闭报名",
-		})
-		return
-	}
-
 	// 检查是否已经报名
 	var existingRegistration models.CompetitionRegistration
 	if err := c.db.Where("competition_id = ? AND student_id = ?", id, userID).First(&existingRegistration).Error; err == nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{
 			"code":    400,
 			"message": "您已经报名该竞赛",
-		})
-		return
-	}
-
-	// 检查是否超过最大参与人数
-	if competition.MaxParticipants != nil && competition.CurrentParticipants >= *competition.MaxParticipants {
-		ctx.JSON(http.StatusBadRequest, gin.H{
-			"code":    400,
-			"message": "该竞赛报名人数已满",
 		})
 		return
 	}
@@ -853,12 +559,7 @@ func (c *CompetitionController) GetMyRegistrations(ctx *gin.Context) {
 			response.Competition = &models.CompetitionResponse{
 				ID:          reg.Competition.ID,
 				Title:       reg.Competition.Title,
-				Type:        reg.Competition.Type,
-				Organizer:   reg.Competition.Organizer,
-				StartTime:   reg.Competition.StartTime,
-				EndTime:     reg.Competition.EndTime,
 				Description: reg.Competition.Description,
-				IsOpen:      reg.Competition.IsOpen,
 			}
 		}
 

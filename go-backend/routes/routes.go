@@ -167,25 +167,9 @@ func RegisterRoutes(r *gin.Engine, db *gorm.DB) {
 				projects.POST("/files/uploadfiles", projectController.UploadFiles) // 上传项目成果文件
 				projects.DELETE("/files/delete", projectController.DeleteFile)     // 删除项目成果文件
 
-				projects.PUT("/:id", projectController.UpdateProjectWithValidation) // 学生修改草稿项目（带验证）
-				projects.POST("/submit/:id", projectController.SubmitProject)       // 提交项目审核
+				projects.POST("/progress/update", projectController.UpdateProjectProgress) // 学生更新项目进度
+				projects.GET("/progress", projectController.GetProjectProgress)            // 学生和教师获取指定项目的进度
 
-				projects.PUT("/update", projectController.UpdateProject) // 更新项目状态
-
-				// =============================================
-				// 2. 项目生命周期管理增强路由
-				// =============================================
-				projects.POST("/:id/milestones", projectController.CreateProjectMilestone)         // 创建项目里程碑
-				projects.PUT("/milestones/:milestoneId", projectController.UpdateProjectMilestone) // 更新项目里程碑
-				projects.GET("/:id/milestones", projectController.GetProjectMilestones)            // 获取项目里程碑列表
-				projects.PUT("/:id/progress", projectController.UpdateProjectProgress)             // 更新项目进度
-
-				// =============================================
-				// 3. 成果文件管理增强路由
-				// =============================================
-				projects.POST("/:id/files", projectController.UploadProjectFile)         // 上传项目文件（增强版）
-				projects.GET("/:id/files", projectController.GetProjectFilesByType)      // 按类型获取项目文件
-				projects.GET("/file-type-configs", projectController.GetFileTypeConfigs) // 获取文件类型配置
 			}
 
 			// 文件上传路由（所有认证用户）
@@ -200,7 +184,6 @@ func RegisterRoutes(r *gin.Engine, db *gorm.DB) {
 			{
 				competitions.GET("", competitionController.GetCompetitionList)           // 获取竞赛列表
 				competitions.GET("/public", competitionController.GetPublicCompetitions) // 获取公开竞赛列表
-				competitions.GET("/:id", competitionController.GetCompetitionByID)       // 获取竞赛详情
 				competitions.GET("/stats", competitionController.GetCompetitionStats)    // 获取竞赛统计
 			}
 
@@ -229,8 +212,8 @@ func RegisterRoutes(r *gin.Engine, db *gorm.DB) {
 			adminCompetitions := auth.Group("/admin/competitions")
 			adminCompetitions.Use(middlewares.AdminOnly())
 			{
-				adminCompetitions.POST("", competitionController.CreateCompetition)                            // 创建竞赛
-				adminCompetitions.PUT("/:id", competitionController.UpdateCompetition)                         // 更新竞赛
+				adminCompetitions.POST("", competitionController.CreateCompetition) // 创建竞赛
+
 				adminCompetitions.DELETE("/:id", competitionController.DeleteCompetition)                      // 删除竞赛
 				adminCompetitions.GET("/:id/registrations", competitionController.GetCompetitionRegistrations) // 查看某竞赛所有报名
 				adminCompetitions.POST("/:id/result", competitionController.SubmitResult)                      // 登记成绩/获奖信息
