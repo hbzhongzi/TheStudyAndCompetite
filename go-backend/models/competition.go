@@ -10,7 +10,7 @@ import (
 )
 
 // CompetitionUserResponse 竞赛模块用户响应（简化版）
-type CompetitionUserResponse struct {
+type Users struct {
 	ID         uint      `json:"id"`
 	Username   string    `json:"username"`
 	Email      string    `json:"email"`
@@ -18,7 +18,6 @@ type CompetitionUserResponse struct {
 	RealName   string    `json:"realName"`
 	Phone      string    `json:"phone"`
 	Department string    `json:"department"`
-	StudentID  string    `json:"studentId"`
 	CreateTime time.Time `json:"createTime"`
 }
 
@@ -39,8 +38,8 @@ type Competition struct {
 	Status              string         `gorm:"column:status" json:"status"`
 	AwardConfig         datatypes.JSON `gorm:"column:award_config" json:"awardConfig"`
 	CreatedBy           uint           `gorm:"column:created_by" json:"createdBy"`
-	CreatedAt           time.Time      `gorm:"column:created_at" json:"createdAt"`
-	UpdatedAt           time.Time      `gorm:"column:updated_at" json:"updatedAt"`
+	CreatedAt           *time.Time     `gorm:"column:created_at" json:"createdAt"`
+	UpdatedAt           *time.Time     `gorm:"column:updated_at" json:"updatedAt"`
 }
 
 func (Competition) TableName() string {
@@ -53,13 +52,13 @@ type CompetitionRegistration struct {
 	CompetitionID        uint       `json:"competition_id" gorm:"not null;comment:竞赛ID"`
 	StudentID            uint       `json:"student_id" gorm:"not null;comment:学生ID"`
 	TeacherID            *uint      `json:"teacher_id" gorm:"comment:指导教师ID（从 users.id 外键）"`
-	RegisterTime         time.Time  `json:"register_time" gorm:"autoCreateTime;comment:报名时间"`
+	RegisterTime         time.Time  `json:"registration_time" gorm:"autoCreateTime;comment:报名时间"`
 	Status               string     `json:"status" gorm:"type:enum('registered','withdrawn','approved','rejected');default:registered;comment:报名状态"`
 	TeacherReviewStatus  string     `json:"teacher_review_status" gorm:"type:enum('pending','approved','rejected');default:pending;comment:教师审核状态"`
 	TeacherReviewComment string     `json:"teacher_review_comment" gorm:"type:text;comment:教师审核意见"`
 	TeacherReviewTime    *time.Time `json:"teacher_review_time" gorm:"comment:教师审核时间"`
 	TeamName             string     `json:"team_name" gorm:"type:varchar(100);comment:团队名称"`
-	TeamLeader           bool       `json:"team_leader" gorm:"default:false;comment:是否为团队负责人"`
+	TeamLeader           int        `json:"team_leader" gorm:"default:0;comment:团队负责人id"`
 	ContactPhone         string     `json:"contact_phone" gorm:"type:varchar(20);comment:联系电话"`
 	ContactEmail         string     `json:"contact_email" gorm:"type:varchar(100);comment:联系邮箱"`
 	AdditionalInfo       JSONMap    `json:"additional_info" gorm:"type:json;comment:额外信息"`
@@ -262,12 +261,8 @@ type CompetitionUpdateRequest struct {
 
 // CompetitionRegistrationRequest 竞赛报名请求
 type CompetitionRegistrationRequest struct {
-	TeamName       string  `json:"team_name"`
-	TeacherID      *uint   `json:"teacher_id" binding:"required_if=TeacherLimit true"`
-	TeamLeader     bool    `json:"team_leader"`
-	ContactPhone   string  `json:"contact_phone"`
-	ContactEmail   string  `json:"contact_email"`
-	AdditionalInfo JSONMap `json:"additional_info"`
+	TeamName   string `json:"team_name"`
+	TeamLeader int    `json:"team_leader"`
 }
 
 // CompetitionSubmissionRequest 竞赛提交请求
@@ -294,8 +289,9 @@ type CompetitionResultRequest struct {
 
 // CompetitionJudgeRequest 竞赛评审教师分配请求
 type CompetitionJudgeRequest struct {
-	TeacherID uint   `json:"teacher_id" binding:"required"`
-	Status    string `json:"status" binding:"omitempty,oneof=active inactive"`
+	CompetitionID uint   `json:"competition_id" binding:"required"`
+	TeacherID     uint   `json:"teacher_id" binding:"required"`
+	Status        string `json:"status" binding:"omitempty,oneof=active inactive"`
 }
 
 // CompetitionScoreRequest 竞赛评分请求
@@ -313,7 +309,7 @@ type CompetitionJudgeResponse struct {
 	Status        string    `json:"status"`
 
 	// 关联数据
-	Teacher *CompetitionUserResponse `json:"teacher"`
+	Teacher *Users `json:"teacher"`
 }
 
 // CompetitionScoreResponse 竞赛评分响应
@@ -326,7 +322,7 @@ type CompetitionScoreResponse struct {
 	ScoredAt     time.Time `json:"scored_at"`
 
 	// 关联数据
-	Judge      *CompetitionUserResponse       `json:"judge"`
+	Judge      *Users                         `json:"judge"`
 	Submission *CompetitionSubmissionResponse `json:"submission"`
 }
 
@@ -348,15 +344,15 @@ type CompetitionResponse struct {
 	Status              string     `json:"status"`
 	AwardConfig         JSONMap    `json:"award_config"`
 	CreatedBy           uint       `json:"created_by"`
-	CreatedAt           time.Time  `json:"created_at"`
-	UpdatedAt           time.Time  `json:"updated_at"`
+	CreatedAt           *time.Time `json:"created_at"`
+	UpdatedAt           *time.Time `json:"updated_at"`
 
 	// 关联数据
-	CreatedByUser     *CompetitionUserResponse `json:"created_by_user"`
-	RegistrationCount int                      `json:"registration_count"`
-	SubmissionCount   int                      `json:"submission_count"`
-	ResultCount       int                      `json:"result_count"`
-	JudgeCount        int                      `json:"judge_count"`
+	CreatedByUser     *Users `json:"created_by_user"`
+	RegistrationCount int    `json:"registration_count"`
+	SubmissionCount   int    `json:"submission_count"`
+	ResultCount       int    `json:"result_count"`
+	JudgeCount        int    `json:"judge_count"`
 }
 
 // CompetitionRegistrationResponse 竞赛报名响应
@@ -371,15 +367,15 @@ type CompetitionRegistrationResponse struct {
 	TeacherReviewComment string     `json:"teacher_review_comment"`
 	TeacherReviewTime    *time.Time `json:"teacher_review_time"`
 	TeamName             string     `json:"team_name"`
-	TeamLeader           bool       `json:"team_leader"`
+	TeamLeader           int        `json:"team_leader"`
 	ContactPhone         string     `json:"contact_phone"`
 	ContactEmail         string     `json:"contact_email"`
 	AdditionalInfo       JSONMap    `json:"additional_info"`
 
 	// 关联数据
-	Competition *CompetitionResponse     `json:"competition"`
-	Student     *CompetitionUserResponse `json:"student"`
-	Teacher     *CompetitionUserResponse `json:"teacher"`
+	Competition *CompetitionResponse `json:"competition"`
+	Student     *Users               `json:"student"`
+	Teacher     *Users               `json:"teacher"`
 }
 
 // CompetitionSubmissionResponse 竞赛提交响应
@@ -402,7 +398,7 @@ type CompetitionSubmissionResponse struct {
 
 	// 关联数据
 	Competition *CompetitionResponse          `json:"competition"`
-	Student     *CompetitionUserResponse      `json:"student"`
+	Student     *Users                        `json:"student"`
 	Feedback    []CompetitionFeedbackResponse `json:"feedback"`
 	Scores      []CompetitionScoreResponse    `json:"scores"`
 }
@@ -422,9 +418,9 @@ type CompetitionFeedbackResponse struct {
 
 	// 关联数据
 	Competition *CompetitionResponse           `json:"competition"`
-	Student     *CompetitionUserResponse       `json:"student"`
-	Teacher     *CompetitionUserResponse       `json:"teacher"`
-	Reviewer    *CompetitionUserResponse       `json:"reviewer"`
+	Student     *Users                         `json:"student"`
+	Teacher     *Users                         `json:"teacher"`
+	Reviewer    *Users                         `json:"reviewer"`
 	Submission  *CompetitionSubmissionResponse `json:"submission"`
 }
 
@@ -444,8 +440,8 @@ type CompetitionResultResponse struct {
 
 	// 关联数据
 	Competition     *CompetitionResponse           `json:"competition"`
-	Student         *CompetitionUserResponse       `json:"student"`
+	Student         *Users                         `json:"student"`
 	Submission      *CompetitionSubmissionResponse `json:"submission"`
-	CreatedByUser   *CompetitionUserResponse       `json:"created_by_user"`
-	FinalizedByUser *CompetitionUserResponse       `json:"finalized_by_user"`
+	CreatedByUser   *Users                         `json:"created_by_user"`
+	FinalizedByUser *Users                         `json:"finalized_by_user"`
 }

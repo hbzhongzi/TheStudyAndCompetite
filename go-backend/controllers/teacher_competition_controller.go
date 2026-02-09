@@ -111,7 +111,7 @@ func (tc *TeacherCompetitionController) GetStudentRegistrations(c *gin.Context) 
 		}
 
 		if reg.Student != nil {
-			response.Student = &models.CompetitionUserResponse{
+			response.Student = &models.Users{
 				ID:         reg.Student.ID,
 				Username:   reg.Student.Username,
 				Email:      reg.Student.Email,
@@ -121,7 +121,7 @@ func (tc *TeacherCompetitionController) GetStudentRegistrations(c *gin.Context) 
 		}
 
 		if reg.Teacher != nil {
-			response.Teacher = &models.CompetitionUserResponse{
+			response.Teacher = &models.Users{
 				ID:         reg.Teacher.ID,
 				Username:   reg.Teacher.Username,
 				Email:      reg.Teacher.Email,
@@ -279,7 +279,7 @@ func (tc *TeacherCompetitionController) ViewStudentSubmission(c *gin.Context) {
 	}
 
 	if submission.Student != nil {
-		response.Student = &models.CompetitionUserResponse{
+		response.Student = &models.Users{
 			ID:         submission.Student.ID,
 			Username:   submission.Student.Username,
 			Email:      submission.Student.Email,
@@ -418,7 +418,7 @@ func (tc *TeacherCompetitionController) GetFeedbackHistory(c *gin.Context) {
 		}
 
 		if fb.Student != nil {
-			response.Student = &models.CompetitionUserResponse{
+			response.Student = &models.Users{
 				ID:         fb.Student.ID,
 				Username:   fb.Student.Username,
 				Email:      fb.Student.Email,
@@ -521,7 +521,7 @@ func (tc *TeacherCompetitionController) GetStudentResults(c *gin.Context) {
 		}
 
 		if result.Student != nil {
-			response.Student = &models.CompetitionUserResponse{
+			response.Student = &models.Users{
 				ID:         result.Student.ID,
 				Username:   result.Student.Username,
 				Email:      result.Student.Email,
@@ -531,7 +531,7 @@ func (tc *TeacherCompetitionController) GetStudentResults(c *gin.Context) {
 		}
 
 		if result.CreatedByUser != nil {
-			response.CreatedByUser = &models.CompetitionUserResponse{
+			response.CreatedByUser = &models.Users{
 				ID:         result.CreatedByUser.ID,
 				Username:   result.CreatedByUser.Username,
 				Email:      result.CreatedByUser.Email,

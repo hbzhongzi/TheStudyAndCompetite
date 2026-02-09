@@ -182,18 +182,18 @@ func RegisterRoutes(r *gin.Engine, db *gorm.DB) {
 			competitionController := controllers.NewCompetitionController(db)
 			competitions := auth.Group("/competitions")
 			{
-				competitions.GET("", competitionController.GetCompetitionList)           // 获取竞赛列表
-				competitions.GET("/public", competitionController.GetPublicCompetitions) // 获取公开竞赛列表
-				competitions.GET("/stats", competitionController.GetCompetitionStats)    // 获取竞赛统计
+				competitions.GET("", competitionController.GetCompetitionList) // 获取竞赛列表
+
+				competitions.GET("/stats", competitionController.GetCompetitionStats) // 获取竞赛统计
 			}
 
 			// 学生竞赛路由
 			studentCompetitions := auth.Group("/student-competitions")
 			//studentCompetitions.Use(middlewares.RoleMiddleware("student"))
 			{
-				studentCompetitions.POST("/:id/register", competitionController.RegisterCompetition) // 报名竞赛
-				studentCompetitions.GET("/my", competitionController.GetMyRegistrations)             // 查看自己的报名记录
-				studentCompetitions.POST("/:id/upload", competitionController.UploadSubmission)      // 上传参赛成果
+				studentCompetitions.POST("/register", competitionController.RegisterCompetition) // 报名竞赛
+				studentCompetitions.GET("/my", competitionController.GetMyRegistrations)         // 查看自己的报名记录
+				studentCompetitions.POST("/:id/upload", competitionController.UploadSubmission)  // 上传参赛成果
 			}
 
 			// 教师竞赛路由
@@ -220,8 +220,10 @@ func RegisterRoutes(r *gin.Engine, db *gorm.DB) {
 				adminCompetitions.GET("/:id/export", competitionController.ExportCompetitionData)              // 导出竞赛数据
 
 				// 竞赛评审管理
-				adminCompetitions.POST("/:id/judges", competitionController.AssignJudge)                 // 分配评审教师
-				adminCompetitions.GET("/:id/judges", competitionController.GetCompetitionJudges)         // 获取评审教师列表
+				adminCompetitions.POST("/judges/distribute", competitionController.AssignJudge) // 分配评审教师
+
+				adminCompetitions.GET("/:id/judges", competitionController.GetCompetitionJudges) // 获取评审教师列表
+
 				adminCompetitions.GET("/:id/judging-progress", competitionController.GetJudgingProgress) // 获取评审进度
 				adminCompetitions.POST("/:id/finalize", competitionController.FinalizeResults)           // 最终确认成绩
 			}

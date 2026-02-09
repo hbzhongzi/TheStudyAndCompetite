@@ -208,7 +208,7 @@ type SystemLogResponse struct {
 	ExpireTime *time.Time `json:"expire_time"`
 
 	// 关联数据
-	User *CompetitionUserResponse `json:"user"`
+	User *Users `json:"user"`
 }
 
 // SystemHealthLogResponse 系统健康日志响应
@@ -241,7 +241,7 @@ type SystemSettingResponse struct {
 	UpdatedBy    *uint     `json:"updated_by"`
 
 	// 关联数据
-	UpdatedByUser *CompetitionUserResponse `json:"updated_by_user"`
+	UpdatedByUser *Users `json:"updated_by_user"`
 }
 
 // BackupRecordResponse 备份记录响应
@@ -259,7 +259,7 @@ type BackupRecordResponse struct {
 	CompletedAt  *time.Time `json:"completed_at"`
 
 	// 关联数据
-	CreatedByUser *CompetitionUserResponse `json:"created_by_user"`
+	CreatedByUser *Users `json:"created_by_user"`
 }
 
 // SystemHealthResponse 系统健康检查响应

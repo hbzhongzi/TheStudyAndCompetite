@@ -95,96 +95,6 @@ func (cc *StudentCompetitionController) GetAvailableCompetitions(c *gin.Context)
 	})
 }
 
-// RegisterCompetition 报名竞赛
-// @Summary 报名竞赛
-// @Description 学生报名参加竞赛，需要选择指导老师
-// @Tags 学生竞赛
-// @Accept json
-// @Produce json
-// @Param id path int true "竞赛ID"
-// @Param request body models.CompetitionRegistrationRequest true "报名信息"
-// @Success 200 {object} utils.Response{data=models.CompetitionRegistrationResponse}
-// @Router /api/competitions/{id}/register [post]
-func (cc *StudentCompetitionController) RegisterCompetition(c *gin.Context) {
-	competitionID, err := strconv.ParseUint(c.Param("id"), 10, 32)
-	if err != nil {
-		utils.ResponseError(c, http.StatusBadRequest, "无效的竞赛ID", err)
-		return
-	}
-
-	// 获取当前用户ID
-	userID := utils.GetCurrentUserID(c)
-	if userID == 0 {
-		utils.ResponseError(c, http.StatusUnauthorized, "用户未登录", nil)
-		return
-	}
-
-	var request models.CompetitionRegistrationRequest
-	if err := c.ShouldBindJSON(&request); err != nil {
-		utils.ResponseError(c, http.StatusBadRequest, "请求参数错误", err)
-		return
-	}
-
-	// 检查竞赛是否存在且开放报名
-	var competition models.Competition
-	if err := cc.DB.First(&competition, competitionID).Error; err != nil {
-		utils.ResponseError(c, http.StatusNotFound, "竞赛不存在", nil)
-		return
-	}
-
-	// 检查报名时间是否在有效范围内
-	now := time.Now()
-
-	// 移除报名开始时间不能早于当前时间的限制，允许设置过去的报名时间
-	// 如果设置了报名开始时间，检查是否已开始报名
-	// if competition.RegistrationStart != nil && now.Before(*competition.RegistrationStart) {
-	// 	utils.ResponseError(c, http.StatusBadRequest, "报名尚未开始，请等待报名开放", nil)
-	// 	return
-	// }
-
-	// 如果设置了报名截止时间，检查是否已截止报名
-	if competition.RegistrationEnd != nil && now.After(*competition.RegistrationEnd) {
-		utils.ResponseError(c, http.StatusBadRequest, "报名已截止，无法报名", nil)
-		return
-	}
-
-	// 检查是否已经报名
-	var existingRegistration models.CompetitionRegistration
-	if err := cc.DB.Where("competition_id = ? AND student_id = ?", competitionID, userID).First(&existingRegistration).Error; err == nil {
-		utils.ResponseError(c, http.StatusBadRequest, "您已经报名过此竞赛", nil)
-		return
-	}
-
-	// 创建报名记录
-	registration := models.CompetitionRegistration{
-		CompetitionID:       uint(competitionID),
-		StudentID:           userID,
-		TeacherID:           request.TeacherID,
-		Status:              "registered",
-		TeacherReviewStatus: "pending",
-		TeamName:            request.TeamName,
-		TeamLeader:          request.TeamLeader,
-		ContactPhone:        request.ContactPhone,
-		ContactEmail:        request.ContactEmail,
-		AdditionalInfo:      request.AdditionalInfo,
-		RegisterTime:        time.Now(),
-	}
-
-	if err := cc.DB.Create(&registration).Error; err != nil {
-		utils.ResponseError(c, http.StatusInternalServerError, "报名失败", err)
-		return
-	}
-
-	// 更新竞赛参与人数
-	cc.DB.Model(&competition).Update("current_participants", gorm.Expr("current_participants + ?", 1))
-
-	c.JSON(http.StatusOK, gin.H{
-		"code":    200,
-		"message": "报名成功",
-		"data":    registration,
-	})
-}
-
 // GetMyRegistrations 获取我的报名记录
 // @Summary 获取我的报名记录
 // @Description 查看学生的竞赛报名记录及审核状态
@@ -266,7 +176,7 @@ func (cc *StudentCompetitionController) GetMyRegistrations(c *gin.Context) {
 		}
 
 		if reg.Student != nil {
-			response.Student = &models.CompetitionUserResponse{
+			response.Student = &models.Users{
 				ID:         reg.Student.ID,
 				Username:   reg.Student.Username,
 				Email:      reg.Student.Email,
@@ -276,7 +186,7 @@ func (cc *StudentCompetitionController) GetMyRegistrations(c *gin.Context) {
 		}
 
 		if reg.Teacher != nil {
-			response.Teacher = &models.CompetitionUserResponse{
+			response.Teacher = &models.Users{
 				ID:         reg.Teacher.ID,
 				Username:   reg.Teacher.Username,
 				Email:      reg.Teacher.Email,
@@ -294,72 +204,6 @@ func (cc *StudentCompetitionController) GetMyRegistrations(c *gin.Context) {
 		"page":          page,
 		"size":          size,
 	})
-}
-
-// UpdateRegistration 更新报名信息
-// @Summary 更新报名信息
-// @Description 仅限未提交或被驳回状态的报名可以更新
-// @Tags 学生竞赛
-// @Accept json
-// @Produce json
-// @Param id path int true "报名记录ID"
-// @Param request body models.CompetitionRegistrationRequest true "更新信息"
-// @Success 200 {object} utils.Response{data=models.CompetitionRegistrationResponse}
-// @Router /api/competition-registrations/{id} [put]
-func (cc *StudentCompetitionController) UpdateRegistration(c *gin.Context) {
-	registrationID, err := strconv.ParseUint(c.Param("id"), 10, 32)
-	if err != nil {
-		utils.ResponseError(c, http.StatusBadRequest, "无效的报名记录ID", err)
-		return
-	}
-
-	userID := utils.GetCurrentUserID(c)
-	if userID == 0 {
-		utils.ResponseError(c, http.StatusUnauthorized, "用户未登录", nil)
-		return
-	}
-
-	var request models.CompetitionRegistrationRequest
-	if err := c.ShouldBindJSON(&request); err != nil {
-		utils.ResponseError(c, http.StatusBadRequest, "请求参数错误", err)
-		return
-	}
-
-	// 检查报名记录是否存在且属于当前用户
-	var registration models.CompetitionRegistration
-	if err := cc.DB.Where("id = ? AND student_id = ?", registrationID, userID).First(&registration).Error; err != nil {
-		utils.ResponseError(c, http.StatusNotFound, "报名记录不存在", err)
-		return
-	}
-
-	// 检查是否可以更新
-	if registration.Status != "registered" && registration.Status != "rejected" {
-		utils.ResponseError(c, http.StatusBadRequest, "当前状态不允许更新", nil)
-		return
-	}
-
-	// 更新报名信息
-	updates := map[string]interface{}{
-		"team_name":       request.TeamName,
-		"team_leader":     request.TeamLeader,
-		"contact_phone":   request.ContactPhone,
-		"contact_email":   request.ContactEmail,
-		"additional_info": request.AdditionalInfo,
-	}
-
-	if request.TeacherID != nil {
-		updates["teacher_id"] = request.TeacherID
-		updates["teacher_review_status"] = "pending"
-		updates["teacher_review_comment"] = ""
-		updates["teacher_review_time"] = nil
-	}
-
-	if err := cc.DB.Model(&registration).Updates(updates).Error; err != nil {
-		utils.ResponseError(c, http.StatusInternalServerError, "更新失败", err)
-		return
-	}
-
-	utils.ResponseSuccess(c, registration)
 }
 
 // SubmitWork 提交竞赛作品
@@ -496,7 +340,7 @@ func (cc *StudentCompetitionController) GetCompetitionResults(c *gin.Context) {
 		}
 
 		if result.Student != nil {
-			response.Student = &models.CompetitionUserResponse{
+			response.Student = &models.Users{
 				ID:         result.Student.ID,
 				Username:   result.Student.Username,
 				Email:      result.Student.Email,
@@ -506,7 +350,7 @@ func (cc *StudentCompetitionController) GetCompetitionResults(c *gin.Context) {
 		}
 
 		if result.CreatedByUser != nil {
-			response.CreatedByUser = &models.CompetitionUserResponse{
+			response.CreatedByUser = &models.Users{
 				ID:         result.CreatedByUser.ID,
 				Username:   result.CreatedByUser.Username,
 				Email:      result.CreatedByUser.Email,

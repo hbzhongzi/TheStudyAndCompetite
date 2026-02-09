@@ -326,96 +326,17 @@ func (c *CompetitionController) GetCompetitionStats(ctx *gin.Context) {
 	})
 }
 
-// GetPublicCompetitions 获取公开竞赛列表（学生/教师/管理员）
-func (c *CompetitionController) GetPublicCompetitions(ctx *gin.Context) {
-	var competitions []models.Competition
-	var total int64
-
-	// 获取查询参数
-	page, _ := strconv.Atoi(ctx.DefaultQuery("page", "1"))
-	size, _ := strconv.Atoi(ctx.DefaultQuery("size", "10"))
-	keyword := ctx.Query("keyword")
-	competitionType := ctx.Query("type")
-	status := ctx.Query("status")
-
-	// 构建查询条件 - 只查询公开的竞赛
-	query := c.db.Model(&models.Competition{}).Where("is_open = ?", true).Preload("CreatedByUser")
-
-	if keyword != "" {
-		query = query.Where("title LIKE ? OR description LIKE ?", "%"+keyword+"%", "%"+keyword+"%")
-	}
-
-	if competitionType != "" {
-		query = query.Where("type = ?", competitionType)
-	}
-
-	if status != "" {
-		if status == "open" {
-			query = query.Where("end_time > ?", time.Now())
-		} else if status == "closed" {
-			query = query.Where("end_time <= ?", time.Now())
-		}
-	}
-
-	// 获取总数
-	if err := query.Count(&total).Error; err != nil {
-		log.Printf("获取公开竞赛总数失败: %v", err)
-		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"code":    500,
-			"message": "获取公开竞赛列表失败",
-		})
-		return
-	}
-
-	// 分页查询
-	offset := (page - 1) * size
-	if err := query.Offset(offset).Limit(size).Order("created_at DESC").Find(&competitions).Error; err != nil {
-		log.Printf("获取公开竞赛列表失败: %v", err)
-		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"code":    500,
-			"message": "获取公开竞赛列表失败",
-		})
-		return
-	}
-
-	// 构建响应数据
-	var responses []models.CompetitionResponse
-	for _, comp := range competitions {
-		// 获取关联数据统计
-		var registrationCount int64
-		c.db.Model(&models.CompetitionRegistration{}).Where("competition_id = ?", comp.ID).Count(&registrationCount)
-
-		response := models.CompetitionResponse{
-			ID:    comp.ID,
-			Title: comp.Title,
-
-			Description: comp.Description,
-
-			CurrentParticipants: comp.CurrentParticipants,
-			CreatedBy:           comp.CreatedBy,
-			CreatedAt:           comp.CreatedAt,
-			UpdatedAt:           comp.UpdatedAt,
-			RegistrationCount:   int(registrationCount),
-		}
-
-		responses = append(responses, response)
-	}
-
-	ctx.JSON(http.StatusOK, gin.H{
-		"code":    200,
-		"message": "获取公开竞赛列表成功",
-		"data": gin.H{
-			"list":  responses,
-			"total": total,
-			"page":  page,
-			"size":  size,
-		},
-	})
-}
-
 // RegisterCompetition 报名竞赛（学生）
 func (c *CompetitionController) RegisterCompetition(ctx *gin.Context) {
-	idStr := ctx.Param("id")
+	idStr := ctx.PostForm("id")
+	if idStr == "" {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"code":    400,
+			"message": "缺少竞赛ID参数",
+		})
+		return
+	}
+
 	id, err := strconv.ParseUint(idStr, 10, 32)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{
@@ -457,7 +378,7 @@ func (c *CompetitionController) RegisterCompetition(ctx *gin.Context) {
 	}
 
 	var req models.CompetitionRegistrationRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
+	if err := ctx.ShouldBind(&req); err != nil {
 		log.Printf("参数绑定失败: %v", err)
 		ctx.JSON(http.StatusBadRequest, gin.H{
 			"code":    400,
@@ -468,14 +389,11 @@ func (c *CompetitionController) RegisterCompetition(ctx *gin.Context) {
 
 	// 创建报名记录
 	registration := models.CompetitionRegistration{
-		CompetitionID:  uint(id),
-		StudentID:      userID.(uint),
-		TeamName:       req.TeamName,
-		TeamLeader:     req.TeamLeader,
-		ContactPhone:   req.ContactPhone,
-		ContactEmail:   req.ContactEmail,
-		AdditionalInfo: req.AdditionalInfo,
-		Status:         "registered",
+		CompetitionID: uint(id),
+		StudentID:     userID.(uint),
+		TeamName:      req.TeamName,
+		TeamLeader:    req.TeamLeader,
+		Status:        "registered",
 	}
 
 	if err := c.db.Create(&registration).Error; err != nil {
@@ -530,7 +448,7 @@ func (c *CompetitionController) GetMyRegistrations(ctx *gin.Context) {
 
 	// 分页查询
 	offset := (page - 1) * size
-	if err := query.Offset(offset).Limit(size).Order("register_time DESC").Find(&registrations).Error; err != nil {
+	if err := query.Offset(offset).Limit(size).Order("registration_time DESC").Find(&registrations).Error; err != nil {
 		log.Printf("获取报名记录失败: %v", err)
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"code":    500,
@@ -738,7 +656,7 @@ func (c *CompetitionController) GetCompetitionRegistrations(ctx *gin.Context) {
 		}
 
 		if reg.Student != nil {
-			response.Student = &models.CompetitionUserResponse{
+			response.Student = &models.Users{
 				ID:         reg.Student.ID,
 				Username:   reg.Student.Username,
 				Email:      reg.Student.Email,
@@ -750,7 +668,6 @@ func (c *CompetitionController) GetCompetitionRegistrations(ctx *gin.Context) {
 				response.Student.RealName = reg.Student.Profile.RealName
 				response.Student.Phone = reg.Student.Profile.Phone
 				response.Student.Department = reg.Student.Profile.Department
-				response.Student.StudentID = reg.Student.Profile.StudentID
 			}
 		}
 
@@ -845,7 +762,7 @@ func (c *CompetitionController) GetCompetitionSubmissions(ctx *gin.Context) {
 		}
 
 		if sub.Student != nil {
-			response.Student = &models.CompetitionUserResponse{
+			response.Student = &models.Users{
 				ID:         sub.Student.ID,
 				Username:   sub.Student.Username,
 				Email:      sub.Student.Email,
@@ -857,7 +774,6 @@ func (c *CompetitionController) GetCompetitionSubmissions(ctx *gin.Context) {
 				response.Student.RealName = sub.Student.Profile.RealName
 				response.Student.Phone = sub.Student.Profile.Phone
 				response.Student.Department = sub.Student.Profile.Department
-				response.Student.StudentID = sub.Student.Profile.StudentID
 			}
 		}
 
@@ -1184,17 +1100,9 @@ func (c *CompetitionController) ExportCompetitionData(ctx *gin.Context) {
 
 // AssignJudge 分配评审教师
 func (c *CompetitionController) AssignJudge(ctx *gin.Context) {
-	competitionID, err := strconv.ParseUint(ctx.Param("id"), 10, 32)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{
-			"code":    400,
-			"message": "无效的竞赛ID",
-		})
-		return
-	}
 
 	var request models.CompetitionJudgeRequest
-	if err := ctx.ShouldBindJSON(&request); err != nil {
+	if err := ctx.ShouldBind(&request); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{
 			"code":    400,
 			"message": "请求参数错误",
@@ -1204,7 +1112,7 @@ func (c *CompetitionController) AssignJudge(ctx *gin.Context) {
 
 	// 检查竞赛是否存在
 	var competition models.Competition
-	if err := c.db.First(&competition, competitionID).Error; err != nil {
+	if err := c.db.First(&competition, request.CompetitionID).Error; err != nil {
 		ctx.JSON(http.StatusNotFound, gin.H{
 			"code":    404,
 			"message": "竞赛不存在",
@@ -1240,7 +1148,7 @@ func (c *CompetitionController) AssignJudge(ctx *gin.Context) {
 
 	// 检查是否已经分配过
 	var existingJudge models.CompetitionJudge
-	if err := c.db.Where("competition_id = ? AND teacher_id = ?", competitionID, request.TeacherID).First(&existingJudge).Error; err == nil {
+	if err := c.db.Where("competition_id = ? AND teacher_id = ?", request.CompetitionID, request.TeacherID).First(&existingJudge).Error; err == nil {
 		// 更新状态
 		existingJudge.Status = request.Status
 		if err := c.db.Save(&existingJudge).Error; err != nil {
@@ -1254,7 +1162,7 @@ func (c *CompetitionController) AssignJudge(ctx *gin.Context) {
 	} else {
 		// 创建新的分配记录
 		judge := models.CompetitionJudge{
-			CompetitionID: uint(competitionID),
+			CompetitionID: uint(request.CompetitionID),
 			TeacherID:     request.TeacherID,
 			Status:        request.Status,
 		}
@@ -1308,7 +1216,7 @@ func (c *CompetitionController) GetCompetitionJudges(ctx *gin.Context) {
 		}
 
 		if judge.Teacher != nil {
-			response.Teacher = &models.CompetitionUserResponse{
+			response.Teacher = &models.Users{
 				ID:         judge.Teacher.ID,
 				Username:   judge.Teacher.Username,
 				Email:      judge.Teacher.Email,
@@ -1456,7 +1364,7 @@ func (c *CompetitionController) GetSubmissionScores(ctx *gin.Context) {
 		}
 
 		if score.Judge != nil {
-			response.Judge = &models.CompetitionUserResponse{
+			response.Judge = &models.Users{
 				ID:         score.Judge.ID,
 				Username:   score.Judge.Username,
 				Email:      score.Judge.Email,
