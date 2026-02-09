@@ -11,7 +11,7 @@
  Target Server Version : 80043 (8.0.43)
  File Encoding         : 65001
 
- Date: 07/02/2026 15:27:08
+ Date: 09/02/2026 17:01:05
 */
 
 SET NAMES utf8mb4;
@@ -116,13 +116,14 @@ CREATE TABLE `competition_judges`  (
   INDEX `idx_competition_judges_status`(`status` ASC) USING BTREE,
   CONSTRAINT `competition_judges_ibfk_1` FOREIGN KEY (`competition_id`) REFERENCES `competitions` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT,
   CONSTRAINT `competition_judges_ibfk_2` FOREIGN KEY (`teacher_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT
-) ENGINE = InnoDB AUTO_INCREMENT = 3 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '竞赛评审教师表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 4 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '竞赛评审教师表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of competition_judges
 -- ----------------------------
 INSERT INTO `competition_judges` VALUES (1, 1, 2, '2026-01-21 10:07:25', 'active', '2026-01-21 10:07:25', '2026-01-21 10:07:25');
 INSERT INTO `competition_judges` VALUES (2, 1, 3, '2026-01-21 10:07:25', 'active', '2026-01-21 10:07:25', '2026-01-21 10:07:25');
+INSERT INTO `competition_judges` VALUES (3, 2, 2, '2026-02-09 15:17:24', 'active', '2026-02-09 15:17:24', '2026-02-09 15:17:24');
 
 -- ----------------------------
 -- Table structure for competition_registrations
@@ -261,6 +262,7 @@ CREATE TABLE `competitions`  (
   `submission_end` datetime NULL DEFAULT NULL COMMENT '提交结束时间',
   `max_participants` int NULL DEFAULT NULL COMMENT '最大参与人数',
   `current_participants` int NULL DEFAULT 0 COMMENT '当前参与人数',
+  `is_open` tinyint UNSIGNED NULL DEFAULT 0 COMMENT '是否开放报名',
   `status` enum('draft','registration','submission','review','completed') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT 'draft' COMMENT '竞赛状态',
   `award_config` json NULL COMMENT '获奖配置',
   `created_by` bigint NOT NULL COMMENT '创建者ID',
@@ -276,13 +278,15 @@ CREATE TABLE `competitions`  (
   INDEX `idx_competitions_submission_end`(`submission_end` ASC) USING BTREE,
   INDEX `idx_competitions_created_by`(`created_by` ASC) USING BTREE,
   CONSTRAINT `competitions_ibfk_1` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
-) ENGINE = InnoDB AUTO_INCREMENT = 3 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '竞赛信息表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 8 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '竞赛信息表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of competitions
 -- ----------------------------
-INSERT INTO `competitions` VALUES (1, '2024年大学生程序设计竞赛（校级）', '校级程序设计竞赛，考察学生的编程能力和算法思维', 'school', '程序设计', '2024-01-01 00:00:00', '2024-01-31 23:59:59', '2024-02-01 00:00:00', '2024-02-28 23:59:59', 100, 2, 'registration', '{\"first_prize\": 3, \"third_prize\": 10, \"second_prize\": 6}', 1, '2026-01-21 10:07:25', '2026-01-21 10:07:25');
-INSERT INTO `competitions` VALUES (2, '全国大学生数学建模竞赛（国家级）', '全国大学生数学建模竞赛，培养数学建模能力', 'national', '数学建模', '2024-03-01 00:00:00', '2024-03-31 23:59:59', '2024-04-01 00:00:00', '2024-04-30 23:59:59', 50, 0, 'draft', '{\"first_prize\": 1, \"third_prize\": 3, \"second_prize\": 2}', 1, '2026-01-21 10:07:25', '2026-01-21 10:07:25');
+INSERT INTO `competitions` VALUES (1, '2024年大学生程序设计竞赛（校级）', '校级程序设计竞赛，考察学生的编程能力和算法思维', 'school', '程序设计', '2024-01-01 00:00:00', '2024-01-31 23:59:59', '2024-02-01 00:00:00', '2024-02-28 23:59:59', 100, 2, 0, 'registration', '{\"first_prize\": 3, \"third_prize\": 10, \"second_prize\": 6}', 1, '2026-01-21 10:07:25', '2026-02-09 11:34:33');
+INSERT INTO `competitions` VALUES (2, '全国大学生数学建模竞赛（国家级）', '全国大学生数学建模竞赛，培养数学建模能力', 'national', '数学建模', '2024-03-01 00:00:00', '2024-03-31 23:59:59', '2024-04-01 00:00:00', '2024-04-30 23:59:59', 50, 0, 1, 'registration', '{\"first_prize\": 1, \"third_prize\": 3, \"second_prize\": 2}', 1, '2026-01-21 10:07:25', '2026-02-09 16:26:48');
+INSERT INTO `competitions` VALUES (6, '2026年全国大学生人工智能创新大赛', '面向全国高校学生的AI算法与应用开发竞赛，鼓励跨学科合作。', 'school', '科技创新', '2026-03-01 17:00:00', '2026-04-16 07:59:59', '2026-05-01 16:00:00', '2026-05-04 02:00:00', 500, 0, 0, 'draft', NULL, 1, '2026-02-09 14:07:00', '2026-02-09 14:07:00');
+INSERT INTO `competitions` VALUES (7, '2026年全国大学生人工智能创新大赛', '面向全国高校学生的AI算法与应用开发竞赛，鼓励跨学科合作。', 'school', '科技创新', '2026-03-01 17:00:00', '2026-04-16 07:59:59', '2026-05-01 16:00:00', '2026-05-04 02:00:00', 500, 0, 0, 'draft', NULL, 1, '2026-02-09 14:25:38', '2026-02-09 14:25:38');
 
 -- ----------------------------
 -- Table structure for files
@@ -379,6 +383,26 @@ CREATE TABLE `project_extension_applications`  (
 -- ----------------------------
 INSERT INTO `project_extension_applications` VALUES (2, 1, 4, 2, '2026-01-28 16:04:15', '2025-01-12 08:00:00', '忘记了', 'approved', '可以不用在努力了', '2026-01-29 09:39:09', '2026-01-28 16:06:34', '2026-02-04 14:40:08');
 INSERT INTO `project_extension_applications` VALUES (3, 9, 4, 2, '2026-02-06 15:10:40', '2026-02-07 00:00:00', '5827', 'pending', '', NULL, '2026-02-06 16:07:07', '2026-02-06 16:07:07');
+
+-- ----------------------------
+-- Table structure for project_progress
+-- ----------------------------
+DROP TABLE IF EXISTS `project_progress`;
+CREATE TABLE `project_progress`  (
+  `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '进度记录ID',
+  `project_id` bigint UNSIGNED NOT NULL COMMENT '项目ID',
+  `progress` int NOT NULL COMMENT '项目进度（0-100）',
+  `comments` text CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL COMMENT '进度说明',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (`id`) USING BTREE
+) ENGINE = InnoDB AUTO_INCREMENT = 3 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '项目进度记录表' ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Records of project_progress
+-- ----------------------------
+INSERT INTO `project_progress` VALUES (1, 1, 50, '可以不用在努力了', '2026-02-09 09:39:56', '2026-02-09 09:39:56');
+INSERT INTO `project_progress` VALUES (2, 1, 60, '快要不用在努力了', '2026-02-09 09:55:03', '2026-02-09 09:55:03');
 
 -- ----------------------------
 -- Table structure for project_reviews
@@ -488,7 +512,7 @@ CREATE TABLE `projects`  (
 -- ----------------------------
 -- Records of projects
 -- ----------------------------
-INSERT INTO `projects` VALUES (1, '基于深度学习的图像识别系统', '使用深度学习技术开发图像识别系统，提高识别准确率', 5, 4, 2, 'approved', NULL, NULL, NULL, NULL, '2026-01-21 10:07:25', '2026-02-06 15:36:54', 0, 1, '创新项目', '预计6个月完成，分为需求分析、设计、开发、测试四个阶段', 99, '2026-02-06 15:36:54');
+INSERT INTO `projects` VALUES (1, '基于深度学习的图像识别系统', '使用深度学习技术开发图像识别系统，提高识别准确率', 5, 4, 2, 'approved', NULL, NULL, NULL, NULL, '2026-01-21 10:07:25', '2026-02-09 09:55:03', 0, 1, '创新项目', '预计6个月完成，分为需求分析、设计、开发、测试四个阶段', 60, '2026-02-09 09:55:02');
 INSERT INTO `projects` VALUES (2, '校园二手交易平台', '开发校园二手交易平台，促进资源循环利用', 8, 5, 3, 'approved', NULL, '2026-02-06 15:08:44', 2, NULL, '2026-01-21 10:07:25', '2026-02-06 15:08:44', 0, 0, '创新项目', '预计8个月完成，包括数据采集、预处理、分析、可视化等模块', 50, '2026-02-06 15:08:43');
 INSERT INTO `projects` VALUES (3, '智能校园导航系统', '基于微信小程序的智能校园导航系统', 5, 6, 2, 'approved', NULL, '2026-02-06 15:11:55', 2, '\n563453453', '2026-01-21 10:07:25', '2026-02-06 15:11:55', 0, 1, '创新项目', '预计4个月完成，包括用户管理、课程管理、学习跟踪等模块', 80, '2026-02-06 15:11:55');
 INSERT INTO `projects` VALUES (9, '我不想努力啦', '2333', NULL, 4, 2, 'approved', '2026-02-04 15:27:04', '2026-02-06 15:10:41', 2, '可以不用在努力了', '2026-02-04 15:13:18', '2026-02-06 15:10:41', 0, 0, '创新项目', '2333', 0, '2026-02-06 15:10:40');
@@ -538,7 +562,7 @@ CREATE TABLE `system_logs`  (
   INDEX `idx_system_logs_action_created_at`(`action` ASC, `created_at` ASC) USING BTREE,
   INDEX `idx_system_logs_user_action`(`user_id` ASC, `action` ASC) USING BTREE,
   CONSTRAINT `system_logs_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL ON UPDATE RESTRICT
-) ENGINE = InnoDB AUTO_INCREMENT = 25 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '系统日志表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 33 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '系统日志表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of system_logs
@@ -567,6 +591,13 @@ INSERT INTO `system_logs` VALUES (21, 4, 'project_created', '创建项目: 12', 
 INSERT INTO `system_logs` VALUES (22, 4, 'project_created', '创建项目: 12', NULL, NULL, '2026-02-04 15:55:14');
 INSERT INTO `system_logs` VALUES (23, 4, 'project_created', '创建项目: 1221', NULL, NULL, '2026-02-07 09:08:30');
 INSERT INTO `system_logs` VALUES (24, 4, 'project_created', '创建项目: 21321', NULL, NULL, '2026-02-07 14:07:18');
+INSERT INTO `system_logs` VALUES (26, 6, 'user_status_changed', '用户状态从 active 变更为 inactive', NULL, NULL, '2026-02-09 10:41:20');
+INSERT INTO `system_logs` VALUES (27, 6, 'user_status_changed', '用户状态从 inactive 变更为 active', NULL, NULL, '2026-02-09 10:41:35');
+INSERT INTO `system_logs` VALUES (28, 1, 'competition_created', '创建竞赛: 全国大学生数学建模竞赛（国家级）', NULL, NULL, '2026-02-09 11:35:02');
+INSERT INTO `system_logs` VALUES (29, 1, 'competition_created', '创建竞赛: 2026年全国大学生人工智能创新大赛', NULL, NULL, '2026-02-09 14:03:46');
+INSERT INTO `system_logs` VALUES (30, 1, 'competition_created', '创建竞赛: 2026年全国大学生人工智能创新大赛', NULL, NULL, '2026-02-09 14:06:31');
+INSERT INTO `system_logs` VALUES (31, 1, 'competition_created', '创建竞赛: 2026年全国大学生人工智能创新大赛', NULL, NULL, '2026-02-09 14:07:00');
+INSERT INTO `system_logs` VALUES (32, 1, 'competition_created', '创建竞赛: 2026年全国大学生人工智能创新大赛', NULL, NULL, '2026-02-09 14:25:38');
 
 -- ----------------------------
 -- Table structure for system_settings
@@ -642,7 +673,7 @@ INSERT INTO `user_profiles` VALUES (2, 2, '张教授', '13800000001', '计算机
 INSERT INTO `user_profiles` VALUES (3, 3, '李副教授', '13800000002', '数学学院', NULL, 'T003', NULL, NULL, '2026-01-21 10:07:25', '2026-01-21 10:07:25');
 INSERT INTO `user_profiles` VALUES (4, 4, '王同学', '13800000003', '计算机学院', '2021001', NULL, NULL, NULL, '2026-01-21 10:07:25', '2026-01-21 10:07:25');
 INSERT INTO `user_profiles` VALUES (5, 5, '刘同学', '13800000004', '数学学院', '2021002', NULL, NULL, NULL, '2026-01-21 10:07:25', '2026-01-21 10:07:25');
-INSERT INTO `user_profiles` VALUES (6, 6, '陈同学', '13800000005', '物理学院', '2021003', NULL, NULL, NULL, '2026-01-21 10:07:25', '2026-01-21 10:07:25');
+INSERT INTO `user_profiles` VALUES (6, 6, '何同学', '13800000005', '物理学院', '2021003', NULL, NULL, NULL, '2026-01-21 10:07:25', '2026-02-09 10:41:08');
 
 -- ----------------------------
 -- Table structure for user_roles
@@ -659,7 +690,7 @@ CREATE TABLE `user_roles`  (
   INDEX `idx_user_roles_role_id`(`role_id` ASC) USING BTREE,
   CONSTRAINT `user_roles_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT,
   CONSTRAINT `user_roles_ibfk_2` FOREIGN KEY (`role_id`) REFERENCES `roles` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT
-) ENGINE = InnoDB AUTO_INCREMENT = 7 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '用户角色关联表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 9 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '用户角色关联表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of user_roles
@@ -669,7 +700,7 @@ INSERT INTO `user_roles` VALUES (2, 2, 2, '2026-01-21 10:07:25');
 INSERT INTO `user_roles` VALUES (3, 3, 2, '2026-01-21 10:07:25');
 INSERT INTO `user_roles` VALUES (4, 4, 3, '2026-01-21 10:07:25');
 INSERT INTO `user_roles` VALUES (5, 5, 3, '2026-01-21 10:07:25');
-INSERT INTO `user_roles` VALUES (6, 6, 3, '2026-01-21 10:07:25');
+INSERT INTO `user_roles` VALUES (8, 6, 3, '2026-02-09 10:41:08');
 
 -- ----------------------------
 -- Table structure for users
@@ -697,7 +728,7 @@ CREATE TABLE `users`  (
   INDEX `idx_users_email`(`email` ASC) USING BTREE,
   INDEX `idx_users_status`(`status` ASC) USING BTREE,
   INDEX `idx_users_create_time`(`create_time` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 7 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '用户表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 8 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '用户表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of users
@@ -707,7 +738,7 @@ INSERT INTO `users` VALUES (2, 'teacher001', 'teacher001@yunmeng.edu.cn', '$2a$1
 INSERT INTO `users` VALUES (3, 'teacher002', 'teacher002@yunmeng.edu.cn', '$2a$10$8U1x52zTNqbMgvbP.295Lu4iGpzF1OV7s8VFCxl2xDVXUUi5FtmUa', 'active', '2026-01-21 10:07:25', '2026-01-24 09:22:57', NULL, NULL, NULL, NULL, '2026-01-24 09:18:06', '2026-01-24 09:22:57', 'teacher');
 INSERT INTO `users` VALUES (4, 'student001', 'student001@yunmeng.edu.cn', '$2a$10$8U1x52zTNqbMgvbP.295Lu4iGpzF1OV7s8VFCxl2xDVXUUi5FtmUa', 'active', '2026-01-21 10:07:25', '2026-01-24 10:36:15', NULL, NULL, '大一', '计算机科学', '2026-01-24 09:18:06', '2026-01-24 10:36:15', 'student');
 INSERT INTO `users` VALUES (5, 'student002', 'student002@yunmeng.edu.cn', '$2a$10$8U1x52zTNqbMgvbP.295Lu4iGpzF1OV7s8VFCxl2xDVXUUi5FtmUa', 'active', '2026-01-21 10:07:25', '2026-01-24 10:36:19', NULL, NULL, '大二', '计算机科学', '2026-01-24 09:18:06', '2026-01-24 10:36:19', 'student');
-INSERT INTO `users` VALUES (6, 'student003', 'student003@yunmeng.edu.cn', '$2a$10$8U1x52zTNqbMgvbP.295Lu4iGpzF1OV7s8VFCxl2xDVXUUi5FtmUa', 'active', '2026-01-21 10:07:25', '2026-01-24 10:36:21', NULL, NULL, '大三', '计算机科学', '2026-01-24 09:18:06', '2026-01-24 10:36:21', 'student');
+INSERT INTO `users` VALUES (6, 'student003', 'student003@yunmeng.edu.cn', '$2a$10$zRkB.EAk5E18DxZ5hAibnOxlKCE3mNX3fnPQLkxZWCQbGRUs4HYDG', 'active', '2026-01-21 10:07:25', '2026-02-09 10:41:48', NULL, NULL, '大三', '计算机科学', '2026-01-24 09:18:06', '2026-02-09 10:41:48', 'student');
 
 -- ----------------------------
 -- View structure for backup_statistics
