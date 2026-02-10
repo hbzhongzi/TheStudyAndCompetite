@@ -471,7 +471,7 @@ func (c *CompetitionController) GetMyRegistrations(ctx *gin.Context) {
 		}
 
 		if reg.Competition != nil {
-			response.Competition = &models.CompetitionResponse{
+			response.Competition = &models.CompetitionResponseInfo{
 				ID:          reg.Competition.ID,
 				Title:       reg.Competition.Title,
 				Description: reg.Competition.Description,
@@ -490,91 +490,6 @@ func (c *CompetitionController) GetMyRegistrations(ctx *gin.Context) {
 			"page":  page,
 			"size":  size,
 		},
-	})
-}
-
-// UploadSubmission 上传参赛成果（学生）
-func (c *CompetitionController) UploadSubmission(ctx *gin.Context) {
-	idStr := ctx.Param("id")
-	id, err := strconv.ParseUint(idStr, 10, 32)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{
-			"code":    400,
-			"message": "竞赛ID格式错误",
-		})
-		return
-	}
-
-	// 获取当前用户ID
-	userID, exists := ctx.Get("userID")
-	if !exists {
-		ctx.JSON(http.StatusUnauthorized, gin.H{
-			"code":    401,
-			"message": "用户未登录",
-		})
-		return
-	}
-
-	// 检查竞赛是否存在
-	var competition models.Competition
-	if err := c.db.First(&competition, id).Error; err != nil {
-		log.Printf("竞赛不存在: %v", err)
-		ctx.JSON(http.StatusNotFound, gin.H{
-			"code":    404,
-			"message": "竞赛不存在",
-		})
-		return
-	}
-
-	// 检查是否已报名
-	var registration models.CompetitionRegistration
-	if err := c.db.Where("competition_id = ? AND student_id = ?", id, userID).First(&registration).Error; err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{
-			"code":    400,
-			"message": "您尚未报名该竞赛",
-		})
-		return
-	}
-
-	// 处理文件上传
-	file, err := ctx.FormFile("file")
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{
-			"code":    400,
-			"message": "请选择要上传的文件",
-		})
-		return
-	}
-
-	description := ctx.PostForm("description")
-
-	// 生成文件URL（这里简化处理，实际应该上传到文件服务器）
-	fileURL := "/uploads/competitions/" + file.Filename
-
-	// 创建提交记录
-	submission := models.CompetitionSubmission{
-		CompetitionID: uint(id),
-		StudentID:     userID.(uint),
-		FileURL:       fileURL,
-		FileName:      file.Filename,
-		FileSize:      file.Size,
-		Description:   description,
-		Status:        "submitted",
-	}
-
-	if err := c.db.Create(&submission).Error; err != nil {
-		log.Printf("上传参赛成果失败: %v", err)
-		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"code":    500,
-			"message": "上传参赛成果失败",
-		})
-		return
-	}
-
-	ctx.JSON(http.StatusOK, gin.H{
-		"code":    200,
-		"message": "上传参赛成果成功",
-		"data":    submission,
 	})
 }
 
@@ -694,7 +609,7 @@ func (c *CompetitionController) GetCompetitionSubmissions(ctx *gin.Context) {
 	size, _ := strconv.Atoi(ctx.DefaultQuery("size", "10"))
 	status := ctx.Query("status")
 
-	query := c.db.Model(&models.CompetitionSubmission{}).Where("competition_id = ?", id).Preload("Student.Profile").Preload("Feedback")
+	query := c.db.Model(&models.CompetitionSubmission{}).Where("competition_id = ?", id).Preload("Student.Profile")
 
 	if status != "" {
 		query = query.Where("status = ?", status)
@@ -712,7 +627,7 @@ func (c *CompetitionController) GetCompetitionSubmissions(ctx *gin.Context) {
 
 	// 分页查询
 	offset := (page - 1) * size
-	if err := query.Offset(offset).Limit(size).Order("submit_time DESC").Find(&submissions).Error; err != nil {
+	if err := query.Offset(offset).Limit(size).Order("submitted_at DESC").Find(&submissions).Error; err != nil {
 		log.Printf("获取提交作品失败: %v", err)
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"code":    500,
@@ -725,17 +640,12 @@ func (c *CompetitionController) GetCompetitionSubmissions(ctx *gin.Context) {
 	var responses []models.CompetitionSubmissionResponse
 	for _, sub := range submissions {
 		response := models.CompetitionSubmissionResponse{
-			ID:             sub.ID,
-			CompetitionID:  sub.CompetitionID,
-			StudentID:      sub.StudentID,
-			FileURL:        sub.FileURL,
-			FileName:       sub.FileName,
-			FileSize:       sub.FileSize,
-			Description:    sub.Description,
-			Version:        sub.Version,
-			SubmitTime:     sub.SubmitTime,
-			Status:         sub.Status,
-			ReviewComments: sub.ReviewComments,
+			ID:            sub.ID,
+			CompetitionID: sub.CompetitionID,
+			StudentID:     sub.StudentID,
+			FileURL:       sub.FileURL,
+			FileSize:      sub.FileSize,
+			Description:   sub.Description,
 		}
 
 		if sub.Student != nil {
@@ -752,22 +662,6 @@ func (c *CompetitionController) GetCompetitionSubmissions(ctx *gin.Context) {
 				response.Student.Phone = sub.Student.Profile.Phone
 				response.Student.Department = sub.Student.Profile.Department
 			}
-		}
-
-		// 添加反馈信息
-		for _, feedback := range sub.Feedback {
-			feedbackResponse := models.CompetitionFeedbackResponse{
-				ID:            feedback.ID,
-				CompetitionID: feedback.CompetitionID,
-				StudentID:     feedback.StudentID,
-				TeacherID:     feedback.TeacherID,
-				SubmissionID:  feedback.SubmissionID,
-				Comment:       feedback.Comment,
-				Score:         feedback.Score,
-				FeedbackTime:  feedback.FeedbackTime,
-				IsFinal:       feedback.IsFinal,
-			}
-			response.Feedback = append(response.Feedback, feedbackResponse)
 		}
 
 		responses = append(responses, response)

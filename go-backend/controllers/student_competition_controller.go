@@ -1,7 +1,11 @@
 package controllers
 
 import (
+	"fmt"
+	"log"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strconv"
 	"time"
 
@@ -159,7 +163,7 @@ func (cc *StudentCompetitionController) GetMyRegistrations(c *gin.Context) {
 
 		// 设置关联数据
 		if reg.Competition != nil {
-			response.Competition = &models.CompetitionResponse{
+			response.Competition = &models.CompetitionResponseInfo{
 				ID:          reg.Competition.ID,
 				Title:       reg.Competition.Title,
 				Description: reg.Competition.Description,
@@ -177,73 +181,138 @@ func (cc *StudentCompetitionController) GetMyRegistrations(c *gin.Context) {
 	})
 }
 
-// SubmitWork 提交竞赛作品
-// @Summary 提交竞赛作品
-// @Description 学生提交竞赛作品文件
-// @Tags 学生竞赛
-// @Accept multipart/form-data
-// @Produce json
-// @Param id path int true "竞赛ID"
-// @Param file formData file true "作品文件"
-// @Param description formData string false "作品描述"
-// @Success 200 {object} utils.Response{data=models.CompetitionSubmissionResponse}
-// @Router /api/competition-submissions/{id} [post]
-func (cc *StudentCompetitionController) SubmitWork(c *gin.Context) {
-	competitionID, err := strconv.ParseUint(c.Param("id"), 10, 32)
-	if err != nil {
-		utils.ResponseError(c, http.StatusBadRequest, "无效的竞赛ID", err)
+// SubmitCompetitionResult 学生提交竞赛成果
+func (c *CompetitionController) SubmitCompetitionResult(ctx *gin.Context) {
+
+	//获取学生竞赛提交相关数据s
+	var req models.SubmitCompetitionResultRequest
+	if err := ctx.ShouldBind(&req); err != nil {
+		log.Printf("参数绑定失败: %v", err)
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"code":    400,
+			"message": "参数错误: " + err.Error(),
+		})
 		return
 	}
 
-	userID := utils.GetCurrentUserID(c)
-	if userID == 0 {
-		utils.ResponseError(c, http.StatusUnauthorized, "用户未登录", nil)
+	// 2. 获取当前学生ID
+	userID, exists := ctx.Get("userID")
+	if !exists {
+		ctx.JSON(http.StatusUnauthorized, gin.H{
+			"code": 401, "message": "用户未登录",
+		})
 		return
 	}
+	studentID := userID.(uint)
 
-	// 检查是否已报名
+	// 3. 校验报名状态（必须 approved）
 	var registration models.CompetitionRegistration
-	if err := cc.DB.Where("competition_id = ? AND student_id = ? AND status = ?", competitionID, userID, "approved").First(&registration).Error; err != nil {
-		utils.ResponseError(c, http.StatusBadRequest, "您尚未报名或报名未通过审核", err)
-		return
-	}
+	err := c.db.
+		Where("competition_id = ? AND student_id = ?", req.CompetitionID, studentID).
+		First(&registration).Error
 
-	// 处理文件上传
-	file, err := c.FormFile("file")
 	if err != nil {
-		utils.ResponseError(c, http.StatusBadRequest, "文件上传失败", err)
+		ctx.JSON(http.StatusForbidden, gin.H{
+			"code":    403,
+			"message": "您未报名该竞赛或报名不存在",
+		})
 		return
 	}
 
-	// 保存文件
-	filename := utils.GenerateFileName(file.Filename)
-	filepath := "uploads/competitions/" + filename
-	if err := c.SaveUploadedFile(file, filepath); err != nil {
-		utils.ResponseError(c, http.StatusInternalServerError, "文件保存失败", err)
+	if registration.Status != "approved" {
+		ctx.JSON(http.StatusForbidden, gin.H{
+			"code":    403,
+			"message": "报名尚未通过审核，无法提交成果",
+		})
 		return
 	}
 
-	description := c.PostForm("description")
+	// 4. 接收文件
+	file, err := ctx.FormFile("file")
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"code":    400,
+			"message": "请上传成果文件",
+		})
+		return
+	}
 
-	// 创建提交记录
+	// 5. 保存文件（示例：本地）
+	saveDir := "uploads/competition_results"
+	_ = os.MkdirAll(saveDir, os.ModePerm)
+
+	filename := fmt.Sprintf(
+		"%d_%d_%d_%s",
+		req.CompetitionID,
+		studentID,
+		time.Now().Unix(),
+		file.Filename,
+	)
+
+	filePath := filepath.Join(saveDir, filename)
+	if err := ctx.SaveUploadedFile(file, filePath); err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"code":    500,
+			"message": "文件保存失败",
+		})
+		return
+	}
+
+	// 6. 检查是否已有提交（用于版本控制）
+	var existing models.CompetitionSubmission
+
+	err = c.db.
+		Where("competition_id = ? AND student_id = ?", req.CompetitionID, studentID).
+		Order("submitted_at DESC").
+		First(&existing).Error
+	version := "1.0"
+	if err == nil {
+		if existing.Locked {
+			ctx.JSON(http.StatusForbidden, gin.H{
+				"code":    403,
+				"message": "当前成果已锁定，无法再次提交",
+			})
+			return
+		}
+		version = increaseVersion(existing.Version)
+	}
+
+	// 7. 保存提交记录
 	submission := models.CompetitionSubmission{
-		CompetitionID: uint(competitionID),
-		StudentID:     userID,
-		FileURL:       filepath,
-		FileName:      file.Filename,
+		CompetitionID: req.CompetitionID,
+		StudentID:     studentID,
+		Title:         req.Title,
+		Description:   req.Description,
+		FileURL:       filePath,
 		FileSize:      file.Size,
-		Description:   description,
-		Version:       1,
-		Status:        "submitted",
-		SubmitTime:    time.Now(),
+		Version:       version,
+		Locked:        false,
+		SubmittedAt:   time.Now(),
 	}
 
-	if err := cc.DB.Create(&submission).Error; err != nil {
-		utils.ResponseError(c, http.StatusInternalServerError, "提交失败", err)
+	if err := c.db.Save(&submission).Error; err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"code":    500,
+			"message": "提交成果失败",
+		})
 		return
 	}
 
-	utils.ResponseSuccess(c, submission)
+	ctx.JSON(http.StatusOK, gin.H{
+		"code":    200,
+		"message": "成果提交成功",
+		"data":    submission,
+	})
+
+}
+
+// 版本号增加函数，简单实现为在原版本号基础上加0.1
+func increaseVersion(old string) string {
+	v, err := strconv.ParseFloat(old, 64)
+	if err != nil {
+		return "1.0"
+	}
+	return fmt.Sprintf("%.1f", v+0.1)
 }
 
 // GetCompetitionResults 获取竞赛成绩

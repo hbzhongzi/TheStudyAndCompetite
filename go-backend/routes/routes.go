@@ -191,9 +191,9 @@ func RegisterRoutes(r *gin.Engine, db *gorm.DB) {
 			studentCompetitions := auth.Group("/student-competitions")
 			//studentCompetitions.Use(middlewares.RoleMiddleware("student"))
 			{
-				studentCompetitions.POST("/register", competitionController.RegisterCompetition) // 报名竞赛
-				studentCompetitions.GET("/my", competitionController.GetMyRegistrations)         // 查看自己的报名记录
-				studentCompetitions.POST("/:id/upload", competitionController.UploadSubmission)  // 上传参赛成果
+				studentCompetitions.POST("/register", competitionController.RegisterCompetition)        // 报名竞赛
+				studentCompetitions.GET("/my", competitionController.GetMyRegistrations)                // 查看自己的报名记录
+				studentCompetitions.POST("/submissions", competitionController.SubmitCompetitionResult) // 上传参赛成果
 			}
 
 			// 教师竞赛路由

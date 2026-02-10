@@ -67,28 +67,25 @@ func (CompetitionRegistration) TableName() string {
 
 // CompetitionSubmission 竞赛成果提交表
 type CompetitionSubmission struct {
-	ID              uint       `json:"id" gorm:"primaryKey;autoIncrement"`
-	CompetitionID   uint       `json:"competition_id" gorm:"not null;comment:竞赛ID"`
-	StudentID       uint       `json:"student_id" gorm:"not null;comment:学生ID"`
-	FileURL         string     `json:"file_url" gorm:"type:varchar(255);comment:文件URL"`
-	FileName        string     `json:"file_name" gorm:"type:varchar(100);comment:文件名"`
-	FileSize        int64      `json:"file_size" gorm:"comment:文件大小"`
-	Description     string     `json:"description" gorm:"type:text;comment:成果描述"`
-	Version         int        `json:"version" gorm:"default:1;comment:版本号"`
-	SubmitTime      time.Time  `json:"submit_time" gorm:"autoCreateTime;comment:提交时间"`
-	Status          string     `json:"status" gorm:"type:enum('submitted','reviewing','approved','rejected');default:submitted;comment:提交状态"`
-	ReviewComments  string     `json:"review_comments" gorm:"type:text;comment:评审意见"`
-	Locked          bool       `json:"locked" gorm:"default:false;comment:是否锁定"`
-	TeacherViewed   bool       `json:"teacher_viewed" gorm:"default:false;comment:教师是否查看过作品"`
-	TeacherFeedback string     `json:"teacher_feedback" gorm:"type:text;comment:教师对作品的非正式反馈（不是评分）"`
-	LastViewTime    *time.Time `json:"last_view_time" gorm:"comment:教师最后查看时间"`
+	ID            uint `gorm:"primaryKey" json:"id"`
+	CompetitionID uint `json:"competition_id"`
+	StudentID     uint `json:"student_id"`
+
+	Title       string `json:"title"`
+	Description string `json:"description"`
+	FileURL     string `json:"file_url"`
+	FileSize    int64  `json:"file_size"`
+	Version     string `json:"version"`
+	Locked      bool   `json:"locked"`
+
+	SubmittedAt time.Time `json:"submitted_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
 
 	// 关联关系
-	Competition *Competition          `json:"competition" gorm:"foreignKey:CompetitionID"`
-	Student     *User                 `json:"student" gorm:"foreignKey:StudentID"`
-	Feedback    []CompetitionFeedback `json:"feedback" gorm:"foreignKey:SubmissionID"`
-	Results     []CompetitionResult   `json:"results" gorm:"foreignKey:SubmissionID"`
-	Scores      []CompetitionScore    `json:"scores" gorm:"foreignKey:SubmissionID"`
+	Competition *Competition        `json:"competition" gorm:"foreignKey:CompetitionID"`
+	Student     *User               `json:"student" gorm:"foreignKey:StudentID"`
+	Results     []CompetitionResult `json:"results" gorm:"foreignKey:SubmissionID"`
+	Scores      []CompetitionScore  `json:"scores" gorm:"foreignKey:SubmissionID"`
 }
 
 // TableName 指定表名
@@ -353,6 +350,13 @@ type CompetitionResponse struct {
 	JudgeCount        int    `json:"judge_count"`
 }
 
+type CompetitionResponseInfo struct {
+	ID          uint   `json:"id"`
+	Title       string `json:"title"`
+	Description string `json:"description"`
+	Status      string `json:"status"`
+}
+
 // CompetitionRegistrationResponse 竞赛报名响应
 type CompetitionRegistrationResponse struct {
 	ID            uint      `json:"id"`
@@ -363,8 +367,15 @@ type CompetitionRegistrationResponse struct {
 	TeamLeader    int       `json:"team_leader"`
 
 	// 关联数据
-	Competition *CompetitionResponse `json:"competition"`
-	Student     *Users               `json:"student"`
+	Competition *CompetitionResponseInfo `json:"competition"`
+	Student     *Users                   `json:"student"`
+}
+
+// SubmitCompetitionResultRequest 学生提交竞赛成果请求
+type SubmitCompetitionResultRequest struct {
+	CompetitionID uint   `json:"competition_id" binding:"required"`
+	Title         string `json:"title" binding:"required"`
+	Description   string `json:"description"`
 }
 
 // CompetitionSubmissionResponse 竞赛提交响应

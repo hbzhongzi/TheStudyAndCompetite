@@ -94,7 +94,7 @@ func (tc *TeacherCompetitionController) GetStudentRegistrations(c *gin.Context) 
 
 		// 设置关联数据
 		if reg.Competition != nil {
-			response.Competition = &models.CompetitionResponse{
+			response.Competition = &models.CompetitionResponseInfo{
 				ID:          reg.Competition.ID,
 				Title:       reg.Competition.Title,
 				Description: reg.Competition.Description,
@@ -219,21 +219,13 @@ func (tc *TeacherCompetitionController) ViewStudentSubmission(c *gin.Context) {
 
 	// 转换为响应格式
 	response := models.CompetitionSubmissionResponse{
-		ID:              submission.ID,
-		CompetitionID:   submission.CompetitionID,
-		StudentID:       submission.StudentID,
-		FileURL:         submission.FileURL,
-		FileName:        submission.FileName,
-		FileSize:        submission.FileSize,
-		Description:     submission.Description,
-		Version:         submission.Version,
-		SubmitTime:      submission.SubmitTime,
-		Status:          submission.Status,
-		ReviewComments:  submission.ReviewComments,
-		Locked:          submission.Locked,
-		TeacherViewed:   submission.TeacherViewed,
-		TeacherFeedback: submission.TeacherFeedback,
-		LastViewTime:    submission.LastViewTime,
+		ID:            submission.ID,
+		CompetitionID: submission.CompetitionID,
+		StudentID:     submission.StudentID,
+		FileURL:       submission.FileURL,
+		FileSize:      submission.FileSize,
+		Description:   submission.Description,
+		Locked:        submission.Locked,
 	}
 
 	if submission.Competition != nil {
@@ -395,18 +387,13 @@ func (tc *TeacherCompetitionController) GetFeedbackHistory(c *gin.Context) {
 
 		if fb.Submission != nil {
 			response.Submission = &models.CompetitionSubmissionResponse{
-				ID:             fb.Submission.ID,
-				CompetitionID:  fb.Submission.CompetitionID,
-				StudentID:      fb.Submission.StudentID,
-				FileURL:        fb.Submission.FileURL,
-				FileName:       fb.Submission.FileName,
-				FileSize:       fb.Submission.FileSize,
-				Description:    fb.Submission.Description,
-				Version:        fb.Submission.Version,
-				SubmitTime:     fb.Submission.SubmitTime,
-				Status:         fb.Submission.Status,
-				ReviewComments: fb.Submission.ReviewComments,
-				Locked:         fb.Submission.Locked,
+				ID:            fb.Submission.ID,
+				CompetitionID: fb.Submission.CompetitionID,
+				StudentID:     fb.Submission.StudentID,
+				FileURL:       fb.Submission.FileURL,
+				FileSize:      fb.Submission.FileSize,
+				Description:   fb.Submission.Description,
+				Locked:        fb.Submission.Locked,
 			}
 		}
 
