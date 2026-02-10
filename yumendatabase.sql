@@ -11,7 +11,7 @@
  Target Server Version : 80043 (8.0.43)
  File Encoding         : 65001
 
- Date: 09/02/2026 17:01:05
+ Date: 10/02/2026 17:32:19
 */
 
 SET NAMES utf8mb4;
@@ -66,7 +66,7 @@ CREATE TABLE `competition_audit_logs`  (
   INDEX `idx_competition_audit_logs_created_at`(`created_at` ASC) USING BTREE,
   CONSTRAINT `competition_audit_logs_ibfk_1` FOREIGN KEY (`competition_id`) REFERENCES `competitions` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT,
   CONSTRAINT `competition_audit_logs_ibfk_2` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT
-) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '竞赛审计日志表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '竞赛审计日志表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of competition_audit_logs
@@ -91,7 +91,7 @@ CREATE TABLE `competition_feedback`  (
   INDEX `idx_competition_feedback_created_at`(`created_at` ASC) USING BTREE,
   CONSTRAINT `competition_feedback_ibfk_1` FOREIGN KEY (`submission_id`) REFERENCES `competition_submissions` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT,
   CONSTRAINT `competition_feedback_ibfk_2` FOREIGN KEY (`teacher_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT
-) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '竞赛教师评语表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '竞赛教师评语表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of competition_feedback
@@ -152,7 +152,7 @@ CREATE TABLE `competition_registrations`  (
   CONSTRAINT `competition_registrations_ibfk_2` FOREIGN KEY (`student_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT,
   CONSTRAINT `competition_registrations_ibfk_3` FOREIGN KEY (`team_leader`) REFERENCES `users` (`id`) ON DELETE SET NULL ON UPDATE RESTRICT,
   CONSTRAINT `competition_registrations_ibfk_4` FOREIGN KEY (`approved_by`) REFERENCES `users` (`id`) ON DELETE SET NULL ON UPDATE RESTRICT
-) ENGINE = InnoDB AUTO_INCREMENT = 4 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '竞赛报名记录表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 5 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '竞赛报名记录表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of competition_registrations
@@ -160,6 +160,7 @@ CREATE TABLE `competition_registrations`  (
 INSERT INTO `competition_registrations` VALUES (1, 1, 4, '编程小分队', 4, '2026-01-21 10:07:25', 'approved', 1, '2026-01-21 10:07:25', NULL);
 INSERT INTO `competition_registrations` VALUES (2, 1, 5, '算法优化组', 5, '2026-01-21 10:07:25', 'approved', 1, '2026-01-21 10:07:25', NULL);
 INSERT INTO `competition_registrations` VALUES (3, 1, 6, '代码工匠', 6, '2026-01-21 10:07:25', 'pending', NULL, NULL, NULL);
+INSERT INTO `competition_registrations` VALUES (4, 2, 4, '快下班了', 4, '2026-02-10 10:52:46', 'pending', NULL, NULL, NULL);
 
 -- ----------------------------
 -- Table structure for competition_results
@@ -187,7 +188,7 @@ CREATE TABLE `competition_results`  (
   CONSTRAINT `competition_results_ibfk_1` FOREIGN KEY (`competition_id`) REFERENCES `competitions` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT,
   CONSTRAINT `competition_results_ibfk_2` FOREIGN KEY (`student_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT,
   CONSTRAINT `competition_results_ibfk_3` FOREIGN KEY (`finalized_by`) REFERENCES `users` (`id`) ON DELETE SET NULL ON UPDATE RESTRICT
-) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '竞赛获奖登记表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '竞赛获奖登记表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of competition_results
@@ -211,7 +212,7 @@ CREATE TABLE `competition_scores`  (
   INDEX `idx_competition_scores_scored_at`(`scored_at` ASC) USING BTREE,
   CONSTRAINT `competition_scores_ibfk_1` FOREIGN KEY (`submission_id`) REFERENCES `competition_submissions` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT,
   CONSTRAINT `competition_scores_ibfk_2` FOREIGN KEY (`judge_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT
-) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '竞赛评分记录表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '竞赛评分记录表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of competition_scores
@@ -240,11 +241,14 @@ CREATE TABLE `competition_submissions`  (
   INDEX `idx_competition_submissions_locked`(`locked` ASC) USING BTREE,
   CONSTRAINT `competition_submissions_ibfk_1` FOREIGN KEY (`competition_id`) REFERENCES `competitions` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT,
   CONSTRAINT `competition_submissions_ibfk_2` FOREIGN KEY (`student_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT
-) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '竞赛成果提交表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 15 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '竞赛成果提交表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of competition_submissions
 -- ----------------------------
+INSERT INTO `competition_submissions` VALUES (12, 1, 4, '种子别闹', '不要让妙蛙种子捣乱的咒语', 'uploads\\competition_results\\1_4_1770712449_啦啦啦.jpg', 196958, '1.0', 0, '2026-02-10 16:34:10', '2026-02-10 16:34:10');
+INSERT INTO `competition_submissions` VALUES (13, 1, 4, '种子别闹', '不要让妙蛙种子捣乱的咒语', 'uploads\\competition_results\\1_4_1770712450_啦啦啦.jpg', 196958, '1.1', 0, '2026-02-10 16:34:11', '2026-02-10 16:34:11');
+INSERT INTO `competition_submissions` VALUES (14, 1, 4, '种子别闹', '不要让妙蛙种子捣乱的咒语', 'uploads\\competition_results\\1_4_1770712453_啦啦啦.jpg', 196958, '1.2', 0, '2026-02-10 16:34:13', '2026-02-10 16:34:13');
 
 -- ----------------------------
 -- Table structure for competitions
@@ -284,7 +288,7 @@ CREATE TABLE `competitions`  (
 -- Records of competitions
 -- ----------------------------
 INSERT INTO `competitions` VALUES (1, '2024年大学生程序设计竞赛（校级）', '校级程序设计竞赛，考察学生的编程能力和算法思维', 'school', '程序设计', '2024-01-01 00:00:00', '2024-01-31 23:59:59', '2024-02-01 00:00:00', '2024-02-28 23:59:59', 100, 2, 0, 'registration', '{\"first_prize\": 3, \"third_prize\": 10, \"second_prize\": 6}', 1, '2026-01-21 10:07:25', '2026-02-09 11:34:33');
-INSERT INTO `competitions` VALUES (2, '全国大学生数学建模竞赛（国家级）', '全国大学生数学建模竞赛，培养数学建模能力', 'national', '数学建模', '2024-03-01 00:00:00', '2024-03-31 23:59:59', '2024-04-01 00:00:00', '2024-04-30 23:59:59', 50, 0, 1, 'registration', '{\"first_prize\": 1, \"third_prize\": 3, \"second_prize\": 2}', 1, '2026-01-21 10:07:25', '2026-02-09 16:26:48');
+INSERT INTO `competitions` VALUES (2, '全国大学生数学建模竞赛（国家级）', '全国大学生数学建模竞赛，培养数学建模能力', 'national', '数学建模', '2024-03-01 00:00:00', '2024-03-31 23:59:59', '2024-04-01 00:00:00', '2024-04-30 23:59:59', 50, 1, 1, 'registration', '{\"first_prize\": 1, \"third_prize\": 3, \"second_prize\": 2}', 1, '2026-01-21 10:07:25', '2026-02-10 10:52:46');
 INSERT INTO `competitions` VALUES (6, '2026年全国大学生人工智能创新大赛', '面向全国高校学生的AI算法与应用开发竞赛，鼓励跨学科合作。', 'school', '科技创新', '2026-03-01 17:00:00', '2026-04-16 07:59:59', '2026-05-01 16:00:00', '2026-05-04 02:00:00', 500, 0, 0, 'draft', NULL, 1, '2026-02-09 14:07:00', '2026-02-09 14:07:00');
 INSERT INTO `competitions` VALUES (7, '2026年全国大学生人工智能创新大赛', '面向全国高校学生的AI算法与应用开发竞赛，鼓励跨学科合作。', 'school', '科技创新', '2026-03-01 17:00:00', '2026-04-16 07:59:59', '2026-05-01 16:00:00', '2026-05-04 02:00:00', 500, 0, 0, 'draft', NULL, 1, '2026-02-09 14:25:38', '2026-02-09 14:25:38');
 
@@ -345,7 +349,7 @@ CREATE TABLE `login_logs`  (
   INDEX `idx_login_logs_ip_address`(`ip_address` ASC) USING BTREE,
   INDEX `idx_login_logs_status`(`status` ASC) USING BTREE,
   CONSTRAINT `login_logs_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT
-) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '登录日志表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '登录日志表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of login_logs
