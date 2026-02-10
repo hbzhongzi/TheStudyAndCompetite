@@ -149,20 +149,12 @@ func (cc *StudentCompetitionController) GetMyRegistrations(c *gin.Context) {
 	var responses []models.CompetitionRegistrationResponse
 	for _, reg := range registrations {
 		response := models.CompetitionRegistrationResponse{
-			ID:                   reg.ID,
-			CompetitionID:        reg.CompetitionID,
-			StudentID:            reg.StudentID,
-			TeacherID:            reg.TeacherID,
-			RegisterTime:         reg.RegisterTime,
-			Status:               reg.Status,
-			TeacherReviewStatus:  reg.TeacherReviewStatus,
-			TeacherReviewComment: reg.TeacherReviewComment,
-			TeacherReviewTime:    reg.TeacherReviewTime,
-			TeamName:             reg.TeamName,
-			TeamLeader:           reg.TeamLeader,
-			ContactPhone:         reg.ContactPhone,
-			ContactEmail:         reg.ContactEmail,
-			AdditionalInfo:       reg.AdditionalInfo,
+			ID:            reg.ID,
+			CompetitionID: reg.CompetitionID,
+			RegisterTime:  reg.RegistrationTime,
+			Status:        reg.Status,
+			TeamName:      reg.TeamName,
+			TeamLeader:    reg.TeamLeader,
 		}
 
 		// 设置关联数据
@@ -174,27 +166,6 @@ func (cc *StudentCompetitionController) GetMyRegistrations(c *gin.Context) {
 				Status:      reg.Competition.Status,
 			}
 		}
-
-		if reg.Student != nil {
-			response.Student = &models.Users{
-				ID:         reg.Student.ID,
-				Username:   reg.Student.Username,
-				Email:      reg.Student.Email,
-				Status:     reg.Student.Status,
-				CreateTime: reg.Student.CreateTime,
-			}
-		}
-
-		if reg.Teacher != nil {
-			response.Teacher = &models.Users{
-				ID:         reg.Teacher.ID,
-				Username:   reg.Teacher.Username,
-				Email:      reg.Teacher.Email,
-				Status:     reg.Teacher.Status,
-				CreateTime: reg.Teacher.CreateTime,
-			}
-		}
-
 		responses = append(responses, response)
 	}
 

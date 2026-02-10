@@ -490,6 +490,36 @@ func (c *ProjectController) ReviewProject(ctx *gin.Context) {
 	})
 }
 
+// GetMyCompleteList 获取教师分配的竞赛审核项目列表
+func (c *ProjectController) GetMyCompleteList(ctx *gin.Context) {
+	userID, exists := ctx.Get("userID")
+	if !exists {
+		ctx.JSON(http.StatusUnauthorized, gin.H{
+			"code":    401,
+			"message": "未授权访问",
+		})
+		return
+	}
+
+	list, total, err := c.projectService.GetMyCompleteProjects(userID.(uint))
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"code":    500,
+			"message": "获取项目列表失败",
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{
+		"code":    200,
+		"message": "查询成功",
+		"data": gin.H{
+			"list":  list,
+			"total": total,
+		},
+	})
+}
+
 // ForceUpdateProjectStatus 管理员强制更新项目状态
 func (c *ProjectController) ForceUpdateProjectStatus(ctx *gin.Context) {
 	idStr := ctx.Param("id")

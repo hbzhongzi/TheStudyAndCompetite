@@ -93,9 +93,9 @@ func RegisterRoutes(r *gin.Engine, db *gorm.DB) {
 			teacherProjects := auth.Group("/teacher-projects")
 			teacherProjects.Use(middlewares.RoleMiddleware("teacher", "admin"))
 			{
-				teacherProjects.GET("", projectController.GetProjectList) // 获取所有项目列表
-
-				teacherProjects.POST("/review", projectController.ReviewProject) // 审核项目
+				teacherProjects.GET("", projectController.GetProjectList)                  // 获取所有项目列表
+				teacherProjects.POST("/review", projectController.ReviewProject)           // 审核项目
+				teacherProjects.GET("/complete/list", projectController.GetMyCompleteList) // 查看分配的竞赛审核项目列表
 
 				teacherProjects.GET("/:id/reviews", projectController.GetProjectReviews) // 获取审核记录
 

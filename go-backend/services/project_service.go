@@ -782,6 +782,44 @@ func (s *ProjectService) ReviewProjectWithResponse(reviewerID uint, req models.P
 	}, nil
 }
 
+// GetMyCompleteProjects 获取教师已分配的竞赛审核项目
+func (s *ProjectService) GetMyCompleteProjects(teacherID uint) ([]models.CompetitionJudgeResponse, int64, error) {
+
+	var judges []models.CompetitionJudge
+
+	err := s.db.
+		Preload("Competition"). // 注意：没有空格
+		Where("teacher_id = ?", teacherID).
+		Order("created_at DESC").
+		Find(&judges).Error
+
+	if err != nil {
+		return nil, 0, err
+	}
+
+	var responses []models.CompetitionJudgeResponse
+	for _, judge := range judges {
+		resp := models.CompetitionJudgeResponse{
+			ID:            judge.ID,
+			CompetitionID: judge.CompetitionID,
+			AssignedAt:    judge.AssignedAt,
+			Status:        judge.Status,
+		}
+
+		if judge.Competition != nil {
+			resp.Competition = &models.CompetitionSimpleResponse{
+				ID:          judge.Competition.ID,
+				Title:       judge.Competition.Title,
+				Description: judge.Competition.Description,
+			}
+		}
+
+		responses = append(responses, resp)
+	}
+
+	return responses, int64(len(responses)), nil
+}
+
 // GetProjectReviews 获取项目审核记录
 func (s *ProjectService) GetProjectReviews(projectID uint) ([]models.ProjectReviewRecordResponse, error) {
 	var reviews []models.ProjectReview

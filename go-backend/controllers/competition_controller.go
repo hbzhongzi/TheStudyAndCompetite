@@ -389,11 +389,12 @@ func (c *CompetitionController) RegisterCompetition(ctx *gin.Context) {
 
 	// 创建报名记录
 	registration := models.CompetitionRegistration{
-		CompetitionID: uint(id),
-		StudentID:     userID.(uint),
-		TeamName:      req.TeamName,
-		TeamLeader:    req.TeamLeader,
-		Status:        "registered",
+		CompetitionID:    uint(id),
+		StudentID:        userID.(uint),
+		RegistrationTime: time.Now(),
+		TeamName:         req.TeamName,
+		TeamLeader:       req.TeamLeader,
+		Status:           "pending",
 	}
 
 	if err := c.db.Create(&registration).Error; err != nil {
@@ -461,16 +462,12 @@ func (c *CompetitionController) GetMyRegistrations(ctx *gin.Context) {
 	var responses []models.CompetitionRegistrationResponse
 	for _, reg := range registrations {
 		response := models.CompetitionRegistrationResponse{
-			ID:             reg.ID,
-			CompetitionID:  reg.CompetitionID,
-			StudentID:      reg.StudentID,
-			RegisterTime:   reg.RegisterTime,
-			Status:         reg.Status,
-			TeamName:       reg.TeamName,
-			TeamLeader:     reg.TeamLeader,
-			ContactPhone:   reg.ContactPhone,
-			ContactEmail:   reg.ContactEmail,
-			AdditionalInfo: reg.AdditionalInfo,
+			ID:            reg.ID,
+			CompetitionID: reg.CompetitionID,
+			RegisterTime:  reg.RegistrationTime,
+			Status:        reg.Status,
+			TeamName:      reg.TeamName,
+			TeamLeader:    reg.TeamLeader,
 		}
 
 		if reg.Competition != nil {
@@ -643,32 +640,12 @@ func (c *CompetitionController) GetCompetitionRegistrations(ctx *gin.Context) {
 	var responses []models.CompetitionRegistrationResponse
 	for _, reg := range registrations {
 		response := models.CompetitionRegistrationResponse{
-			ID:             reg.ID,
-			CompetitionID:  reg.CompetitionID,
-			StudentID:      reg.StudentID,
-			RegisterTime:   reg.RegisterTime,
-			Status:         reg.Status,
-			TeamName:       reg.TeamName,
-			TeamLeader:     reg.TeamLeader,
-			ContactPhone:   reg.ContactPhone,
-			ContactEmail:   reg.ContactEmail,
-			AdditionalInfo: reg.AdditionalInfo,
-		}
-
-		if reg.Student != nil {
-			response.Student = &models.Users{
-				ID:         reg.Student.ID,
-				Username:   reg.Student.Username,
-				Email:      reg.Student.Email,
-				Status:     reg.Student.Status,
-				CreateTime: reg.Student.CreateTime,
-			}
-			// 如果有用户档案信息，添加详细信息
-			if reg.Student.Profile != nil {
-				response.Student.RealName = reg.Student.Profile.RealName
-				response.Student.Phone = reg.Student.Profile.Phone
-				response.Student.Department = reg.Student.Profile.Department
-			}
+			ID:            reg.ID,
+			CompetitionID: reg.CompetitionID,
+			RegisterTime:  reg.RegistrationTime,
+			Status:        reg.Status,
+			TeamName:      reg.TeamName,
+			TeamLeader:    reg.TeamLeader,
 		}
 
 		responses = append(responses, response)
@@ -1035,22 +1012,12 @@ func (c *CompetitionController) ExportCompetitionData(ctx *gin.Context) {
 
 		for _, reg := range registrations {
 			item := gin.H{
-				"id":              reg.ID,
-				"student_id":      reg.StudentID,
-				"register_time":   reg.RegisterTime,
-				"status":          reg.Status,
-				"team_name":       reg.TeamName,
-				"team_leader":     reg.TeamLeader,
-				"contact_phone":   reg.ContactPhone,
-				"contact_email":   reg.ContactEmail,
-				"additional_info": reg.AdditionalInfo,
+				"id":            reg.ID,
+				"register_time": reg.RegistrationTime,
+				"status":        reg.Status,
+				"team_name":     reg.TeamName,
+				"team_leader":   reg.TeamLeader,
 			}
-
-			if reg.Student != nil {
-				item["student_name"] = reg.Student.Username
-				item["student_email"] = reg.Student.Email
-			}
-
 			data = append(data, item)
 		}
 	} else {
@@ -1210,7 +1177,6 @@ func (c *CompetitionController) GetCompetitionJudges(ctx *gin.Context) {
 		response := models.CompetitionJudgeResponse{
 			ID:            judge.ID,
 			CompetitionID: judge.CompetitionID,
-			TeacherID:     judge.TeacherID,
 			AssignedAt:    judge.AssignedAt,
 			Status:        judge.Status,
 		}

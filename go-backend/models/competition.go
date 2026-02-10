@@ -48,25 +48,16 @@ func (Competition) TableName() string {
 
 // CompetitionRegistration 竞赛报名记录表
 type CompetitionRegistration struct {
-	ID                   uint       `json:"id" gorm:"primaryKey;autoIncrement"`
-	CompetitionID        uint       `json:"competition_id" gorm:"not null;comment:竞赛ID"`
-	StudentID            uint       `json:"student_id" gorm:"not null;comment:学生ID"`
-	TeacherID            *uint      `json:"teacher_id" gorm:"comment:指导教师ID（从 users.id 外键）"`
-	RegisterTime         time.Time  `json:"registration_time" gorm:"autoCreateTime;comment:报名时间"`
-	Status               string     `json:"status" gorm:"type:enum('registered','withdrawn','approved','rejected');default:registered;comment:报名状态"`
-	TeacherReviewStatus  string     `json:"teacher_review_status" gorm:"type:enum('pending','approved','rejected');default:pending;comment:教师审核状态"`
-	TeacherReviewComment string     `json:"teacher_review_comment" gorm:"type:text;comment:教师审核意见"`
-	TeacherReviewTime    *time.Time `json:"teacher_review_time" gorm:"comment:教师审核时间"`
-	TeamName             string     `json:"team_name" gorm:"type:varchar(100);comment:团队名称"`
-	TeamLeader           int        `json:"team_leader" gorm:"default:0;comment:团队负责人id"`
-	ContactPhone         string     `json:"contact_phone" gorm:"type:varchar(20);comment:联系电话"`
-	ContactEmail         string     `json:"contact_email" gorm:"type:varchar(100);comment:联系邮箱"`
-	AdditionalInfo       JSONMap    `json:"additional_info" gorm:"type:json;comment:额外信息"`
+	ID               uint      `json:"id" gorm:"primaryKey;autoIncrement"`
+	StudentID        uint      `json:"student_id" gorm:"not null;comment:学生ID"`
+	CompetitionID    uint      `json:"competition_id" gorm:"not null;comment:竞赛ID"`
+	RegistrationTime time.Time `json:"registration_time" gorm:"autoCreateTime;comment:报名时间"`
+	Status           string    `json:"status" gorm:"type:enum('registered','withdrawn','approved','rejected');default:registered;comment:报名状态"`
+	TeamName         string    `json:"team_name" gorm:"type:varchar(100);comment:团队名称"`
+	TeamLeader       int       `json:"team_leader" gorm:"default:0;comment:团队负责人id"`
 
 	// 关联关系
 	Competition *Competition `json:"competition" gorm:"foreignKey:CompetitionID"`
-	Student     *User        `json:"student" gorm:"foreignKey:StudentID"`
-	Teacher     *User        `json:"teacher" gorm:"foreignKey:TeacherID"`
 }
 
 // TableName 指定表名
@@ -304,12 +295,19 @@ type CompetitionScoreRequest struct {
 type CompetitionJudgeResponse struct {
 	ID            uint      `json:"id"`
 	CompetitionID uint      `json:"competition_id"`
-	TeacherID     uint      `json:"teacher_id"`
 	AssignedAt    time.Time `json:"assigned_at"`
 	Status        string    `json:"status"`
 
 	// 关联数据
-	Teacher *Users `json:"teacher"`
+	Competition *CompetitionSimpleResponse `json:"competition"`
+	Teacher     *Users                     `json:"teacher"`
+}
+
+// CompetitionSimpleResponse 精简竞赛信息
+type CompetitionSimpleResponse struct {
+	ID          uint   `json:"id"`
+	Title       string `json:"title"`
+	Description string `json:"description"`
 }
 
 // CompetitionScoreResponse 竞赛评分响应
@@ -357,25 +355,16 @@ type CompetitionResponse struct {
 
 // CompetitionRegistrationResponse 竞赛报名响应
 type CompetitionRegistrationResponse struct {
-	ID                   uint       `json:"id"`
-	CompetitionID        uint       `json:"competition_id"`
-	StudentID            uint       `json:"student_id"`
-	TeacherID            *uint      `json:"teacher_id"`
-	RegisterTime         time.Time  `json:"register_time"`
-	Status               string     `json:"status"`
-	TeacherReviewStatus  string     `json:"teacher_review_status"`
-	TeacherReviewComment string     `json:"teacher_review_comment"`
-	TeacherReviewTime    *time.Time `json:"teacher_review_time"`
-	TeamName             string     `json:"team_name"`
-	TeamLeader           int        `json:"team_leader"`
-	ContactPhone         string     `json:"contact_phone"`
-	ContactEmail         string     `json:"contact_email"`
-	AdditionalInfo       JSONMap    `json:"additional_info"`
+	ID            uint      `json:"id"`
+	CompetitionID uint      `json:"competition_id"`
+	RegisterTime  time.Time `json:"register_time"`
+	Status        string    `json:"status"`
+	TeamName      string    `json:"team_name"`
+	TeamLeader    int       `json:"team_leader"`
 
 	// 关联数据
 	Competition *CompetitionResponse `json:"competition"`
 	Student     *Users               `json:"student"`
-	Teacher     *Users               `json:"teacher"`
 }
 
 // CompetitionSubmissionResponse 竞赛提交响应
