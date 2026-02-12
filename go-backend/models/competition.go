@@ -140,12 +140,14 @@ func (CompetitionJudge) TableName() string {
 
 // CompetitionScore 竞赛评分记录表
 type CompetitionScore struct {
-	ID           uint      `json:"id" gorm:"primaryKey;autoIncrement"`
-	SubmissionID uint      `json:"submission_id" gorm:"not null;comment:提交记录ID"`
-	JudgeID      uint      `json:"judge_id" gorm:"not null;comment:评审教师ID"`
-	Score        float64   `json:"score" gorm:"type:decimal(5,2);not null;comment:评分"`
-	Comment      string    `json:"comment" gorm:"type:text;comment:评语"`
-	ScoredAt     time.Time `json:"scored_at" gorm:"autoCreateTime;comment:评分时间"`
+	ID            uint      `json:"id" gorm:"primaryKey;autoIncrement"`
+	SubmissionID  uint      `json:"submission_id" gorm:"not null;comment:提交记录ID"`
+	CompetitionID uint      `json:"competition_id" gorm:"not null;comment:竞赛ID"`
+	StudentID     uint      `json:"student_id" gorm:"not null;comment:学生ID"`
+	JudgeID       uint      `json:"judge_id" gorm:"not null;comment:评审教师ID"`
+	Score         float64   `json:"score" gorm:"type:decimal(5,2);not null;comment:评分"`
+	Comment       string    `json:"comment" gorm:"type:text;comment:评语"`
+	ScoredAt      time.Time `json:"scored_at" gorm:"autoCreateTime;comment:评分时间"`
 
 	// 关联关系
 	Submission *CompetitionSubmission `json:"submission" gorm:"foreignKey:SubmissionID"`
@@ -282,10 +284,40 @@ type CompetitionJudgeRequest struct {
 	Status        string `json:"status" binding:"omitempty,oneof=active inactive"`
 }
 
-// CompetitionScoreRequest 竞赛评分请求
+// Response 统一API响应结构
+type Response struct {
+	Code    int         `json:"code"`
+	Message string      `json:"message"`
+	Data    interface{} `json:"data,omitempty"`
+}
+
+// CompetitionScoreResponse 竞赛评分响应
+type CompetitionScoreResponse struct {
+	ID            uint      `json:"id"`
+	JudgeID       uint      `json:"judge_id"`
+	SubmissionID  uint      `json:"submission_id"`
+	CompetitionID uint      `json:"competition_id"`
+	StudentID     uint      `json:"student_id"`
+	Score         float64   `json:"score"`
+	Comment       string    `json:"comment"`
+	ScoredAt      time.Time `json:"scored_at"`
+
+	// 关联数据
+	Judge      *Users                         `json:"judge"`
+	Submission *CompetitionSubmissionResponse `json:"submission"`
+}
+
 type CompetitionScoreRequest struct {
-	Score   float64 `json:"score" binding:"required,min=0,max=100"`
-	Comment string  `json:"comment"`
+	ID            uint `gorm:"primaryKey" json:"id"`
+	JudgeID       uint `json:"judge_id"`
+	SubmissionID  uint `json:"submission_id"`
+	CompetitionID uint `json:"competition_id"`
+	StudentID     uint `json:"student_id"`
+
+	Score     float64   `json:"score"`
+	Comment   string    `json:"comment"`
+	ScoredAt  time.Time `json:"scored_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 // CompetitionJudgeResponse 竞赛评审教师响应
@@ -305,20 +337,6 @@ type CompetitionSimpleResponse struct {
 	ID          uint   `json:"id"`
 	Title       string `json:"title"`
 	Description string `json:"description"`
-}
-
-// CompetitionScoreResponse 竞赛评分响应
-type CompetitionScoreResponse struct {
-	ID           uint      `json:"id"`
-	SubmissionID uint      `json:"submission_id"`
-	JudgeID      uint      `json:"judge_id"`
-	Score        float64   `json:"score"`
-	Comment      string    `json:"comment"`
-	ScoredAt     time.Time `json:"scored_at"`
-
-	// 关联数据
-	Judge      *Users                         `json:"judge"`
-	Submission *CompetitionSubmissionResponse `json:"submission"`
 }
 
 // CompetitionResponse 竞赛响应

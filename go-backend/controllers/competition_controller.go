@@ -679,88 +679,71 @@ func (c *CompetitionController) GetCompetitionSubmissions(ctx *gin.Context) {
 	})
 }
 
-// SubmitFeedback 提交评语（教师）
-func (c *CompetitionController) SubmitFeedback(ctx *gin.Context) {
-	idStr := ctx.Param("id")
-	id, err := strconv.ParseUint(idStr, 10, 32)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{
-			"code":    400,
-			"message": "竞赛ID格式错误",
+// ScoreCompetition 评审提交作品（教师）
+func (c *CompetitionController) ScoreCompetition(ctx *gin.Context) {
+
+	var req models.CompetitionScoreRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, models.Response{
+			Code:    400,
+			Message: "参数错误",
 		})
 		return
 	}
 
-	// 获取当前用户ID
 	userID, exists := ctx.Get("userID")
 	if !exists {
-		ctx.JSON(http.StatusUnauthorized, gin.H{
-			"code":    401,
-			"message": "用户未登录",
+		ctx.JSON(http.StatusUnauthorized, models.Response{
+			Code:    401,
+			Message: "未登录",
 		})
 		return
 	}
 
-	var req struct {
-		StudentID uint     `json:"student_id" binding:"required"`
-		Comment   string   `json:"comment" binding:"required"`
-		Score     *float64 `json:"score"`
-	}
+	judgeID := userID.(uint)
 
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		log.Printf("参数绑定失败: %v", err)
-		ctx.JSON(http.StatusBadRequest, gin.H{
-			"code":    400,
-			"message": "参数错误: " + err.Error(),
-		})
-		return
-	}
-
-	// 检查竞赛是否存在
-	var competition models.Competition
-	if err := c.db.First(&competition, id).Error; err != nil {
-		log.Printf("竞赛不存在: %v", err)
-		ctx.JSON(http.StatusNotFound, gin.H{
-			"code":    404,
-			"message": "竞赛不存在",
-		})
-		return
-	}
-
-	// 检查学生是否提交了作品
 	var submission models.CompetitionSubmission
-	if err := c.db.Where("competition_id = ? AND student_id = ?", id, req.StudentID).First(&submission).Error; err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{
-			"code":    400,
-			"message": "该学生尚未提交作品",
+	if err := c.db.First(&submission, req.SubmissionID).Error; err != nil {
+		ctx.JSON(http.StatusNotFound, models.Response{
+			Code:    404,
+			Message: "提交记录不存在",
 		})
 		return
 	}
 
-	// 创建反馈记录
-	feedback := models.CompetitionFeedback{
-		CompetitionID: uint(id),
-		StudentID:     req.StudentID,
-		TeacherID:     userID.(uint),
+	score := models.CompetitionScore{
+		JudgeID:       judgeID,
 		SubmissionID:  submission.ID,
-		Comment:       req.Comment,
+		CompetitionID: submission.CompetitionID,
+		StudentID:     submission.StudentID,
 		Score:         req.Score,
-		IsFinal:       false,
+		Comment:       req.Comment,
 	}
 
-	if err := c.db.Create(&feedback).Error; err != nil {
-		log.Printf("提交评语失败: %v", err)
-		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"code":    500,
-			"message": "提交评语失败",
+	if err := c.db.Create(&score).Error; err != nil {
+		ctx.JSON(http.StatusInternalServerError, models.Response{
+			Code:    500,
+			Message: "评分失败",
 		})
 		return
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{
-		"code":    200,
-		"message": "提交评语成功",
-		"data":    feedback,
+	// 构造返回数据
+	resp := models.CompetitionScoreResponse{
+		ID:            score.ID,
+		JudgeID:       score.JudgeID,
+		SubmissionID:  score.SubmissionID,
+		CompetitionID: score.CompetitionID,
+		StudentID:     score.StudentID,
+		Score:         score.Score,
+		Comment:       score.Comment,
+		ScoredAt:      score.ScoredAt,
+	}
+
+	ctx.JSON(http.StatusOK, models.Response{
+		Code:    200,
+		Message: "评分成功",
+		Data:    resp,
 	})
 }
 

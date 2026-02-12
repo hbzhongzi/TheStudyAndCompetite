@@ -201,7 +201,7 @@ func RegisterRoutes(r *gin.Engine, db *gorm.DB) {
 			teacherCompetitions.Use(middlewares.RoleMiddleware("teacher", "admin"))
 			{
 				teacherCompetitions.GET("/:id/submissions", competitionController.GetCompetitionSubmissions) // 查看竞赛提交作品
-				teacherCompetitions.POST("/:id/feedback", competitionController.SubmitFeedback)              // 提交评语
+				teacherCompetitions.POST("/score", competitionController.ScoreCompetition)                   // 提交评语
 
 				// 竞赛评审路由
 				teacherCompetitions.POST("/submissions/:submissionId/scores", competitionController.SubmitScore)        // 提交评分
