@@ -11,7 +11,7 @@
  Target Server Version : 80043 (8.0.43)
  File Encoding         : 65001
 
- Date: 10/02/2026 17:32:19
+ Date: 12/02/2026 09:32:14
 */
 
 SET NAMES utf8mb4;
@@ -200,18 +200,19 @@ CREATE TABLE `competition_results`  (
 DROP TABLE IF EXISTS `competition_scores`;
 CREATE TABLE `competition_scores`  (
   `id` bigint NOT NULL AUTO_INCREMENT COMMENT '评分ID',
-  `submission_id` bigint NOT NULL COMMENT '提交记录ID',
   `judge_id` bigint NOT NULL COMMENT '评审教师ID',
+  `submission_id` bigint NULL DEFAULT NULL COMMENT '学生文件提交ID',
+  `competition_id` bigint NOT NULL COMMENT '竞赛ID',
+  `student_id` bigint NOT NULL COMMENT '学生ID',
   `score` decimal(5, 2) NOT NULL COMMENT '评分',
   `comment` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL COMMENT '评语',
   `scored_at` datetime NULL DEFAULT CURRENT_TIMESTAMP COMMENT '评分时间',
+  `updated_at` datetime NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (`id`) USING BTREE,
   UNIQUE INDEX `unique_submission_judge`(`submission_id` ASC, `judge_id` ASC) USING BTREE,
   INDEX `idx_competition_scores_submission_id`(`submission_id` ASC) USING BTREE,
   INDEX `idx_competition_scores_judge_id`(`judge_id` ASC) USING BTREE,
-  INDEX `idx_competition_scores_scored_at`(`scored_at` ASC) USING BTREE,
-  CONSTRAINT `competition_scores_ibfk_1` FOREIGN KEY (`submission_id`) REFERENCES `competition_submissions` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT,
-  CONSTRAINT `competition_scores_ibfk_2` FOREIGN KEY (`judge_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT
+  INDEX `idx_competition_scores_scored_at`(`scored_at` ASC) USING BTREE
 ) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '竞赛评分记录表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
