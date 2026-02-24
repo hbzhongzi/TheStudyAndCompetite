@@ -163,7 +163,9 @@
             <div v-else-if="currentComponent" class="welcome-content">
               <component :is="currentComponent" />
             </div>
-            
+            <div v-else-if="activeMenu === 'competition-info'" class="welcome-content">
+              <CompetitionView />
+            </div>
             <!-- 默认显示欢迎信息 -->
             <div v-else class="welcome-content">
               <h2>欢迎使用学生端管理系统</h2>

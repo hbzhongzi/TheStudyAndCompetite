@@ -99,6 +99,19 @@ export const competitionService = {
     }
   },
 
+
+
+ //管理员获取评审教师列表
+async getJudgesByCompetition(competitionId) {
+  try{
+    const response = await api.get(`/admin/competitions/${competitionId}/judges`)
+    return response
+  }catch(error){
+    console.error('获取评审教师列表失败:', error)
+  }
+},
+
+
   // 创建竞赛（管理员）
   async createCompetition(competitionData) {
     try {
@@ -120,6 +133,19 @@ async getCompetitionDetail(id) {
     throw error
   }
 },
+
+
+//分配新的评审教师
+async distributeJudge(distributeData) {
+  try {
+    const response = await api.post('/admin/competitions/judges/distribute', distributeData)
+    return response
+  } catch (error) {
+    console.error('分配评审教师失败:', error)
+    throw error
+  }
+},
+
 
 // 切换开放状态
 async toggleCompetitionOpen(id) {
