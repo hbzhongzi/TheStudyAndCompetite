@@ -221,15 +221,15 @@ type CompetitionCreateRequest struct {
 	Title             string    `json:"title" binding:"required"`
 	Type              string    `json:"type"`
 	Organizer         string    `json:"organizer"`
-	RegistrationStart time.Time `json:"registration_start"`
-	RegistrationEnd   time.Time `json:"registration_end"`
-	StartTime         time.Time `json:"start_time"`
-	EndTime           time.Time `json:"end_time"`
+	RegistrationStart time.Time `json:"RegistrationStart"`
+	RegistrationEnd   time.Time `json:"RegistrationEnd"`
+	StartTime         time.Time `json:"StartTime"`
+	EndTime           time.Time `json:"EndTime"`
 	Level             string    `json:"level"`
 	Description       string    `json:"description"`
 	Attachment        string    `json:"attachment"`
-	IsOpen            bool      `json:"is_open"`
-	MaxParticipants   int       `json:"max_participants"`
+	IsOpen            bool      `json:"isOpen"`
+	MaxParticipants   int       `json:"maxParticipants"`
 }
 
 // CompetitionUpdateRequest 更新竞赛请求

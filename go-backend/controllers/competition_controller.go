@@ -218,6 +218,74 @@ func (c *CompetitionController) CreateCompetition(ctx *gin.Context) {
 	})
 }
 
+// GetCompetitionDetail 获取竞赛详情
+func (c *CompetitionController) GetCompetitionDetail(ctx *gin.Context) {
+	idStr := ctx.Param("id")
+	id, err := strconv.ParseUint(idStr, 10, 32)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"code":    400,
+			"message": "竞赛ID格式错误",
+		})
+		return
+	}
+
+	var competition models.Competition
+	if err := c.db.First(&competition, id).Error; err != nil {
+		log.Printf("获取竞赛详情失败: %v", err)
+		ctx.JSON(http.StatusNotFound, gin.H{
+			"code":    404,
+			"message": "竞赛不存在",
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{
+		"code":    200,
+		"message": "获取竞赛详情成功",
+		"data":    competition,
+	})
+}
+
+// ToggleCompetitionOpen 切换竞赛开放状态
+func (c *CompetitionController) ToggleCompetitionOpen(ctx *gin.Context) {
+	idStr := ctx.Param("id")
+	id, err := strconv.ParseUint(idStr, 10, 32)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"code":    400,
+			"message": "竞赛ID格式错误",
+		})
+		return
+	}
+
+	var competition models.Competition
+	if err := c.db.First(&competition, id).Error; err != nil {
+		log.Printf("获取竞赛详情失败: %v", err)
+		ctx.JSON(http.StatusNotFound, gin.H{
+			"code":    404,
+			"message": "竞赛不存在",
+		})
+		return
+	}
+
+	isOpen := !competition.IsOpen
+
+	if err := c.db.Model(&competition).Update("is_open", isOpen).Error; err != nil {
+		log.Printf("切换竞赛开放状态失败: %v", err)
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"code":    500,
+			"message": "切换竞赛开放状态失败",
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{
+		"code":    200,
+		"message": "切换竞赛开放状态成功",
+	})
+}
+
 // DeleteCompetition 删除竞赛
 func (c *CompetitionController) DeleteCompetition(ctx *gin.Context) {
 	idStr := ctx.Param("id")

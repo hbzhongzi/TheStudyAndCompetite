@@ -74,16 +74,6 @@ export const competitionService = {
     }
   },
 
-  // 获取竞赛详情
-  async getCompetitionDetail(id) {
-    try {
-      const response = await api.get(`/competitions/${id}`)
-      return response
-    } catch (error) {
-      console.error('获取竞赛详情失败:', error)
-      throw error
-    }
-  },
 
   // 获取竞赛统计信息
   async getCompetitionStats() {
@@ -119,6 +109,28 @@ export const competitionService = {
       throw error
     }
   },
+
+// 获取竞赛详情
+async getCompetitionDetail(id) {
+  try {
+    const response = await api.get(`/admin/competitions/${id}/detail`)
+    return response
+  } catch (error) {
+    console.error('获取竞赛详情失败:', error)
+    throw error
+  }
+},
+
+// 切换开放状态
+async toggleCompetitionOpen(id) {
+  try {
+    const response = await api.post(`/admin/competitions/${id}/isopen`)
+    return response
+  } catch (error) {
+    console.error('切换报名状态失败:', error)
+    throw error
+  }
+},
 
   // 更新竞赛（管理员）
   async updateCompetition(id, competitionData) {

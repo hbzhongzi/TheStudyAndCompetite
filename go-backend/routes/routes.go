@@ -212,7 +212,9 @@ func RegisterRoutes(r *gin.Engine, db *gorm.DB) {
 			adminCompetitions := auth.Group("/admin/competitions")
 			adminCompetitions.Use(middlewares.AdminOnly())
 			{
-				adminCompetitions.POST("", competitionController.CreateCompetition) // 创建竞赛
+				adminCompetitions.POST("", competitionController.CreateCompetition)                // 创建竞赛
+				adminCompetitions.GET("/:id/detail", competitionController.GetCompetitionDetail)   // 查看竞赛详情
+				adminCompetitions.POST("/:id/isopen", competitionController.ToggleCompetitionOpen) // 切换竞赛开放状态
 
 				adminCompetitions.DELETE("/:id", competitionController.DeleteCompetition)                      // 删除竞赛
 				adminCompetitions.GET("/:id/registrations", competitionController.GetCompetitionRegistrations) // 查看某竞赛所有报名
