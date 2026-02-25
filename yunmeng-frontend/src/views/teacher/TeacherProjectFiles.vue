@@ -148,7 +148,7 @@
 <script setup>
 import { ref, onMounted, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { teacherService } from '@/services/teacherService'
+import teacherService from '@/services/teacherService'
 
 /* ================= 项目 ================= */
 const projects = ref([])

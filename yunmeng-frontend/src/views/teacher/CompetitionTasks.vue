@@ -1,5 +1,5 @@
 <template>
-  <div class="competition-guidance">
+  <div class="competition-tasks">
 
     <!-- 页面标题 -->
     <div class="page-header">
@@ -83,9 +83,9 @@ export default {
 
     const loadTasks = async () => {
       try {
-        loading.value = true
-        const res = await teacherService.getMyTasks()
-        taskList.value = res.data.list
+        //loading.value = true
+      // const res = await teacherService.getCompetitionRegistrations()
+       // taskList.value = res.data.list
       } catch (error) {
         ElMessage.error('获取任务失败')
       } finally {

@@ -285,9 +285,9 @@ async toggleCompetitionOpen(id) {
   },
 
   // 报名竞赛（学生）
-  async registerCompetition(competitionId, registrationData) {
+  async registerCompetition( registrationData) {
     try {
-      const response = await api.post(`/competitions/${competitionId}/register`, registrationData)
+      const response = await api.post(`/student-competitions/register`, registrationData)
       return response
     } catch (error) {
       console.error('报名竞赛失败:', error)
@@ -296,9 +296,9 @@ async toggleCompetitionOpen(id) {
   },
 
   // 获取我的报名记录（学生）
-  async getMyRegistrations(params = {}) {
+  async getMyRegistrations() {
     try {
-      const response = await api.get('/competitions/my', { params })
+      const response = await api.get('/student-competitions/my')
       return response
     } catch (error) {
       console.error('获取我的报名记录失败:', error)

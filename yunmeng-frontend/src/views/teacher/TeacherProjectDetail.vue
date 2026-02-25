@@ -205,7 +205,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { teacherService } from '@/services/teacherService'
+import teacherService from '@/services/teacherService'
 
 /* ================= 项目列表 ================= */
 

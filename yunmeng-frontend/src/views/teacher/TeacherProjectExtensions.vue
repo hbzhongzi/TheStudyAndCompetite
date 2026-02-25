@@ -314,7 +314,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Clock, Check, Warning, Document, Search } from '@element-plus/icons-vue'
-import { teacherService } from '../../services/teacherService'
+import teacherService from '@/services/teacherService'
 import { validateProjectList, validateApiResponse, getDefaultProjects } from '../../utils/dataValidator'
 
 // 响应式数据

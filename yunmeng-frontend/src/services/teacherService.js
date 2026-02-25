@@ -274,49 +274,6 @@ class TeacherService {
     }
   }
 
-  // 新增：批量更新项目进度
-  async batchUpdateProjectProgress(batchData) {
-    try {
-      const response = await api.post('/teachers/projects/batch-update-progress', batchData)
-      return response
-    } catch (error) {
-      throw new Error(error.response?.data?.message || '批量更新项目进度失败')
-    }
-  }
-
-  // 新增：批量添加评语
-  async batchAddComments(batchData) {
-    try {
-      const response = await api.post('/teachers/projects/batch-add-comments', batchData)
-      return response
-    } catch (error) {
-      throw new Error(error.response?.data?.message || '批量添加评语失败')
-    }
-  }
-
-  // 新增：导出项目数据
-  async exportProjects(projectIds) {
-    try {
-      const response = await api.post('/teachers/projects/export', { projectIds }, {
-        responseType: 'blob'
-      })
-      return response
-    } catch (error) {
-      throw new Error(error.response?.data?.message || '导出项目数据失败')
-    }
-  }
-
-  // 新增：生成项目报告
-  async generateProjectReport(projectIds) {
-    try {
-      const response = await api.post('/teachers/projects/report', { projectIds }, {
-        responseType: 'blob'
-      })
-      return response
-    } catch (error) {
-      throw new Error(error.response?.data?.message || '生成项目报告失败')
-    }
-  }
 
   // 获取项目文件列表
   async getProjectFiles(projectId, params = {}) {
@@ -328,36 +285,6 @@ class TeacherService {
     }
   }
 
-
-  // 获取项目里程碑列表
-  async getProjectMilestones(projectId, params = {}) {
-    try {
-      const response = await api.get(`/projects/${projectId}/milestones`, { params })
-      return response
-    } catch (error) {
-      throw new Error(error.response?.data?.message || '获取项目里程碑失败')
-    }
-  }
-
-  // 添加指导记录
-  async addGuidanceRecord(studentId, guidanceData) {
-    try {
-      const response = await api.post(`/students/${studentId}/guidance`, guidanceData)
-      return response
-    } catch (error) {
-      throw new Error(error.response?.data?.message || '添加指导记录失败')
-    }
-  }
-
-  // 获取指导记录
-  async getGuidanceRecords(studentId) {
-    try {
-      const response = await api.get(`/students/${studentId}/guidance`)
-      return response
-    } catch (error) {
-      throw new Error(error.response?.data?.message || '获取指导记录失败')
-    }
-  }
 
   // ========== 竞赛相关API ==========
   
@@ -381,28 +308,6 @@ class TeacherService {
     }
   }
 
-  // 审核竞赛报名
-  async reviewCompetitionRegistration(registrationId, reviewData) {
-    try {
-      const response = await api.put(`/teachers/competition-registrations/${registrationId}/review`, reviewData)
-      return response
-    } catch (error) {
-      throw new Error(error.response?.data?.message || '竞赛报名审核失败')
-    }
-  }
-
-  // 批量审核竞赛报名
-  async batchReviewCompetitionRegistrations(registrationIds, reviewData) {
-    try {
-      const response = await api.put('/teachers/competition-registrations/batch-review', {
-        registrationIds,
-        ...reviewData
-      })
-      return response
-    } catch (error) {
-      throw new Error(error.response?.data?.message || '批量审核竞赛报名失败')
-    }
-  }
 
   // 获取竞赛作品详情
   async getCompetitionSubmission(submissionId) {
@@ -434,39 +339,6 @@ class TeacherService {
     }
   }
 
-  // 下载竞赛证书
-  async downloadCompetitionCertificate(registrationId) {
-    try {
-      const response = await api.get(`/teachers/competition-registrations/${registrationId}/certificate`, {
-        responseType: 'blob'
-      })
-      return response
-    } catch (error) {
-      throw new Error(error.response?.data?.message || '下载竞赛证书失败')
-    }
-  }
-
-  // 下载竞赛成绩单
-  async downloadCompetitionTranscript(registrationId) {
-    try {
-      const response = await api.get(`/teachers/competition-registrations/${registrationId}/transcript`, {
-        responseType: 'blob'
-      })
-      return response
-    } catch (error) {
-      throw new Error(error.response?.data?.message || '下载竞赛成绩单失败')
-    }
-  }
-
-  // 获取竞赛指导统计数据
-  async getCompetitionGuidanceStats() {
-    try {
-      const response = await api.get('/teachers/competition-guidance/stats')
-      return response
-    } catch (error) {
-      throw new Error(error.response?.data?.message || '获取竞赛指导统计数据失败')
-    }
-  }
 
   // 导出竞赛指导数据
   async exportCompetitionGuidanceData(params = {}) {
@@ -481,47 +353,6 @@ class TeacherService {
     }
   }
 
-  // ========== 原有竞赛API（保留兼容性） ==========
-
-  // 获取竞赛列表
-  async getCompetitions(params = {}) {
-    try {
-      const response = await api.get('/competitions', { params })
-      return response
-    } catch (error) {
-      throw new Error(error.response?.data?.message || '获取竞赛列表失败')
-    }
-  }
-
-  // 获取竞赛详情
-  async getCompetitionDetail(competitionId) {
-    try {
-      const response = await api.get(`/competitions/${competitionId}`)
-      return response
-    } catch (error) {
-      throw new Error(error.response?.data?.message || '获取竞赛详情失败')
-    }
-  }
-
-  // 添加竞赛指导记录
-  async addCompetitionGuidance(competitionId, guidanceData) {
-    try {
-      const response = await api.post(`/competitions/${competitionId}/guidance`, guidanceData)
-      return response
-    } catch (error) {
-      throw new Error(error.response?.data?.message || '添加竞赛指导记录失败')
-    }
-  }
-
-  // 获取竞赛指导记录
-  async getCompetitionGuidance(competitionId) {
-    try {
-      const response = await api.get(`/competitions/${competitionId}/guidance`)
-      return response
-    } catch (error) {
-      throw new Error(error.response?.data?.message || '获取竞赛指导记录失败')
-    }
-  }
 
   // 审核竞赛
   async reviewCompetition(competitionId, reviewData) {
@@ -542,97 +373,10 @@ class TeacherService {
       throw new Error(error.response?.data?.message || '获取竞赛审核记录失败')
     }
   }
-
-  // 获取统计数据
-  async getStatistics() {
-    try {
-      const response = await api.get('/statistics')
-      return response
-    } catch (error) {
-      throw new Error(error.response?.data?.message || '获取统计数据失败')
-    }
-  }
-
-  // 导出数据
-  async exportData(type, params = {}) {
-    try {
-      const response = await api.get(`/export/${type}`, { 
-        params,
-        responseType: 'blob'
-      })
-      return response
-    } catch (error) {
-      throw new Error(error.response?.data?.message || '导出数据失败')
-    }
-  }
 }
 
-// 文件服务类
-class FileService {
-  // 上传文件
-  async uploadFile(file) {
-    try {
-      const formData = new FormData()
-      formData.append('file', file)
-      
-      const response = await api.post('/files/upload', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data'
-        }
-      })
-      return response
-    } catch (error) {
-      throw new Error(error.response?.data?.message || '文件上传失败')
-    }
-  }
-
-  // 下载文件
-  async downloadFile(fileUrl, fileName) {
-    try {
-      const response = await api.get(fileUrl, {
-        responseType: 'blob'
-      })
-      
-      // 创建下载链接
-      const blob = new Blob([response])
-      const url = window.URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.href = url
-      link.download = fileName
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-      window.URL.revokeObjectURL(url)
-      
-      return response
-    } catch (error) {
-      throw new Error(error.response?.data?.message || '文件下载失败')
-    }
-  }
-
-  // 预览文件
-  async previewFile(fileUrl) {
-    try {
-      const response = await api.get(fileUrl, {
-        responseType: 'blob'
-      })
-      
-      // 创建预览链接
-      const blob = new Blob([response])
-      const url = window.URL.createObjectURL(blob)
-      
-      // 在新窗口中打开文件
-      window.open(url, '_blank')
-      
-      return response
-    } catch (error) {
-      throw new Error(error.response?.data?.message || '文件预览失败')
-    }
-  }
-}
 
 // 创建实例
 const teacherService = new TeacherService()
-const fileService = new FileService()
 
-export { teacherService, fileService } 
+export default teacherService

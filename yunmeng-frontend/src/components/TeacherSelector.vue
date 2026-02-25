@@ -34,7 +34,7 @@
 <script setup>
 import { ref, onMounted, watch } from 'vue'
 import { ElMessage } from 'element-plus'
-import { teacherService } from '../services/teacherService'
+import teacherService  from '@/services/teacherService'
 
 // Props
 const props = defineProps({

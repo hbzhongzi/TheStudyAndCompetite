@@ -103,7 +103,7 @@
               v-if="item.isOpen && item.status === 'registration'"
               type="primary"
               size="small"
-              @click="registerCompetition(item)"
+              @click="openRegisterDialog(item)"
             >
               立即报名
             </el-button>
@@ -142,12 +142,43 @@
         </el-descriptions>
       </div>
     </el-dialog>
+    <!-- 报名弹窗 -->
+<el-dialog
+  v-model="registerVisible"
+  title="竞赛报名"
+  width="500px"
+>
+  <el-form
+    :model="registerForm"
+    :rules="registerRules"
+    ref="registerFormRef"
+    label-width="100px"
+  >
+
+    <el-form-item label="竞赛名称">
+      <el-input v-model="registerForm.title" disabled />
+    </el-form-item>
+
+    <el-form-item label="队伍名称" prop="TeamName">
+      <el-input v-model="registerForm.TeamName" placeholder="请输入队伍名称" />
+    </el-form-item>
+
+  </el-form>
+
+  <template #footer>
+    <el-button @click="registerVisible = false">取消</el-button>
+    <el-button type="primary" @click="submitRegister">
+      确认报名
+    </el-button>
+  </template>
+</el-dialog>
 
   </div>
 </template>
 <script>
 import { ref, computed, onMounted } from 'vue'
 import competitionService from '@/services/competitionService'
+import { ElMessage } from 'element-plus'
 
 export default {
   name: 'CompetitionHall',
@@ -170,6 +201,66 @@ export default {
       competitions.value = res.data.list
       loading.value = false
     }
+
+
+const registerVisible = ref(false)
+const registerFormRef = ref(null)
+
+const registerForm = ref({
+  id: '',
+  title: '',
+  TeamName: '',
+  TeamLeader: ''
+})
+
+const registerRules = {
+  TeamName: [
+    { required: true, message: '请输入队伍名称', trigger: 'blur' }
+  ]
+}
+const currentUser = ref(null)
+
+onMounted(() => {
+  const user = localStorage.getItem('userInfo')
+  if (user) {
+    currentUser.value = JSON.parse(user)
+  }
+})
+
+const openRegisterDialog = (item) => {
+  registerForm.value.id = item.id
+  registerForm.value.title = item.title
+  registerForm.value.TeamName = ''
+
+  // 设置队长ID
+  registerForm.value.TeamLeader = currentUser.value.id
+
+  registerVisible.value = true
+}
+
+const submitRegister = () => {
+  registerFormRef.value.validate(async (valid) => {
+    if (!valid) return
+
+    try {
+// 创建 FormData
+const formData = new FormData()
+formData.append('id', registerForm.value.id)             
+formData.append('team_name', registerForm.value.TeamName) // 注意字段名
+formData.append('team_leader', registerForm.value.TeamLeader)
+
+await competitionService.registerCompetition(formData)
+
+      ElMessage.success('报名成功 🎉')
+      registerVisible.value = false
+
+      loadCompetitions()
+
+    } catch (err) {
+      ElMessage.error('请检查是否重复报名')
+    }
+  })
+}
 
 const filteredCompetitions = computed(() => {
   return competitions.value
@@ -238,6 +329,12 @@ const getProgress = (item) => {
       getStatusText,
       viewDetail,
       getProgress,
+      registerVisible,
+      registerForm,
+      registerFormRef,
+      registerRules,
+      openRegisterDialog,
+      submitRegister,
       registerCompetition
     }
   }

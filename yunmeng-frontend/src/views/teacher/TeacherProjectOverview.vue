@@ -290,7 +290,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Document, Clock, Check, Warning, Search, Grid, List } from '@element-plus/icons-vue'
-import { teacherService } from '../../services/teacherService'
+import teacherService from '@/services/teacherService'
 
 // 响应式数据
 const loading = ref(false)

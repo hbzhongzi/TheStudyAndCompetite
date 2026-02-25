@@ -224,7 +224,7 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Plus, Delete, Upload, Document } from '@element-plus/icons-vue'
-import { teacherService } from '../services/teacherService'
+import teacherService  from '@/services/teacherService'
 import { getToken } from '../services/auth'
 import TeacherSelector from './TeacherSelector.vue'
 

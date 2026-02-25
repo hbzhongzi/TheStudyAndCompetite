@@ -195,7 +195,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import { teacherService } from '@/services/teacherService'
+import teacherService from '@/services/teacherService'
 
 /* ========= 数据 ========= */
 const list = ref([])

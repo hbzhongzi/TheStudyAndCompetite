@@ -180,7 +180,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Search, Refresh } from '@element-plus/icons-vue'
-import { teacherService, fileService } from '../../services/teacherService'
+import teacherService from '@/services/teacherService'
 import { ensureArray, validateApiResponse } from '../../utils/dataValidator'
 
 // 响应式数据
@@ -442,16 +442,6 @@ const submitReview = async () => {
     ElMessage.error(error.message || '审核操作失败')
   } finally {
     submitting.value = false
-  }
-}
-
-const downloadFile = async (file) => {
-  try {
-    await fileService.downloadFile(file.fileUrl, file.fileName)
-    ElMessage.success('文件下载成功')
-  } catch (error) {
-    console.error('文件下载失败:', error)
-    ElMessage.error(error.message || '文件下载失败')
   }
 }
 

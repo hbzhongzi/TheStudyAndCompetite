@@ -286,7 +286,7 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { Search, Refresh, Download, Plus } from '@element-plus/icons-vue'
-import { teacherService } from '../../services/teacherService'
+import teacherService from '@/services/teacherService'
 import { ElMessage } from 'element-plus'
 import { debounce } from 'lodash-es'
 

@@ -190,10 +190,6 @@
               <TeacherProjectReview />
             </div>
 
-            <div v-else-if="activeMenu === 'project-files'" class="welcome-content">
-
-              <TeacherProjectFiles />
-            </div>
             <div v-else-if="activeMenu === 'project-detail'" class="welcome-content">
 
               <TeacherProjectDetail />
@@ -257,9 +253,7 @@ import ReportView from './ReportView.vue'
 import TeacherProfileView from './TeacherProfileView.vue'
 import TeacherProjectOverview from './TeacherProjectOverview.vue'
 import TeacherProjectReview from './TeacherProjectReview.vue'
-import TeacherProjectFiles from './TeacherProjectFiles.vue'
 import TeacherProjectDetail from './TeacherProjectDetail.vue'
-import TeacherProjectExtensions from './TeacherProjectExtensions.vue'
 
 
 const router = useRouter()

@@ -707,7 +707,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search, Refresh, Delete, User, Document, Download, Clock, InfoFilled, Edit, View, Check, Close, Star } from '@element-plus/icons-vue'
-import { teacherService, fileService } from '../../services/teacherService'
+import teacherService from '@/services/teacherService'
 import { validateApiResponse, safeArrayFilter } from '../../utils/dataValidator'
 
 // 响应式数据
@@ -1209,15 +1209,6 @@ const submitQualityAssessment = async () => {
   }
 };
 
-const downloadFile = async (file) => {
-  try {
-    await fileService.downloadFile(file.fileUrl, file.fileName)
-    ElMessage.success('文件下载成功')
-  } catch (error) {
-    console.error('文件下载失败:', error)
-    ElMessage.error(error.message || '文件下载失败')
-  }
-}
 
 const getStatusType = (status) => {
   const statusMap = {

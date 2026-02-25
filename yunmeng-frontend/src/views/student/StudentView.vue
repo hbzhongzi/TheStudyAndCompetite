@@ -50,12 +50,9 @@
                 <span>竞赛管理</span>
               </template>
               <el-menu-item index="competition-info">竞赛信息</el-menu-item>
+              <el-menu-item index="my-competitions">我的竞赛</el-menu-item>
               <el-menu-item index="competition-submission">作品提交</el-menu-item>
             </el-sub-menu>
-            <el-menu-item index="my-competitions">
-              <i class="el-icon-medal"></i>
-              <span>我的竞赛</span>
-            </el-menu-item>
             <el-menu-item index="applications">
               <i class="el-icon-edit-outline"></i>
               <span>申请管理</span>
@@ -162,6 +159,9 @@
             <!-- 其他界面 -->
             <div v-else-if="currentComponent" class="welcome-content">
               <component :is="currentComponent" />
+            </div>
+            <div v-else-if="activeMenu === 'my-competitions'" class="welcome-content">
+              <MyCompetitions />
             </div>
             <div v-else-if="activeMenu === 'competition-info'" class="welcome-content">
               <CompetitionView />
