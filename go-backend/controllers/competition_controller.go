@@ -711,7 +711,10 @@ func (c *CompetitionController) GetCompetitionSubmissions(ctx *gin.Context) {
 			ID:            sub.ID,
 			CompetitionID: sub.CompetitionID,
 			StudentID:     sub.StudentID,
+			TeacherViewed: sub.TeacherViewed,
+			SubmitTime:    sub.SubmittedAt,
 			FileURL:       sub.FileURL,
+			Version:       sub.Version,
 			FileSize:      sub.FileSize,
 			Description:   sub.Description,
 		}

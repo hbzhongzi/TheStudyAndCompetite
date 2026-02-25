@@ -20,35 +20,30 @@
       >
         <el-card shadow="hover" class="task-card">
 
-          <!-- 状态标签 -->
           <div class="status-tag">
             <el-tag :type="getStatusType(item.status)">
               {{ getStatusText(item.status) }}
             </el-tag>
           </div>
 
-          <!-- 竞赛标题 -->
           <h3>{{ item.competition?.title }}</h3>
 
-          <!-- 竞赛简介 -->
           <p class="description">
             {{ item.competition?.description }}
           </p >
 
-          <!-- 分配时间 -->
           <p class="time">
             <strong>分配时间：</strong>
             {{ formatDate(item.assigned_at) }}
           </p >
 
-          <!-- 操作按钮 -->
           <div class="actions">
             <el-button
               type="primary"
               size="small"
-              @click="enterReview(item)"
+              @click="openDetail(item.competition_id)"
             >
-              进入评审
+              查看详情
             </el-button>
           </div>
 
@@ -57,7 +52,82 @@
 
     </el-row>
 
-    <!-- 空状态 -->
+    <!-- 详情弹窗 -->
+    <el-dialog
+      v-model="detailVisible"
+      title="竞赛详情"
+      width="700px"
+    >
+      <el-descriptions
+        v-if="competitionDetail"
+        :column="2"
+        border
+      >
+
+        <el-descriptions-item label="竞赛名称">
+          {{ competitionDetail.title }}
+        </el-descriptions-item>
+
+        <el-descriptions-item label="竞赛级别">
+          {{ getLevelText(competitionDetail.level) }}
+        </el-descriptions-item>
+
+        <el-descriptions-item label="竞赛类别">
+          {{ competitionDetail.category }}
+        </el-descriptions-item>
+
+        <el-descriptions-item label="状态">
+          {{ competitionDetail.status }}
+        </el-descriptions-item>
+
+        <el-descriptions-item label="报名时间">
+          {{ formatDate(competitionDetail.registrationStart) }}
+          -
+          {{ formatDate(competitionDetail.registrationEnd) }}
+        </el-descriptions-item>
+
+        <el-descriptions-item label="提交时间">
+          {{ formatDate(competitionDetail.submissionStart) }}
+          -
+          {{ formatDate(competitionDetail.submissionEnd) }}
+        </el-descriptions-item>
+
+        <el-descriptions-item label="人数上限">
+          {{ competitionDetail.maxParticipants }}
+        </el-descriptions-item>
+
+        <el-descriptions-item label="当前人数">
+          {{ competitionDetail.currentParticipants }}
+        </el-descriptions-item>
+
+        <el-descriptions-item label="是否开放">
+          <el-tag :type="competitionDetail.isOpen ? 'success' : 'danger'">
+            {{ competitionDetail.isOpen ? '开放' : '关闭' }}
+          </el-tag>
+        </el-descriptions-item>
+
+        <el-descriptions-item label="创建时间">
+          {{ formatDate(competitionDetail.createdAt) }}
+        </el-descriptions-item>
+
+      </el-descriptions>
+
+      <!-- 奖项配置 -->
+      <div v-if="competitionDetail?.awardConfig" style="margin-top:20px">
+        <h4>奖项配置</h4>
+        <el-tag type="success">
+          一等奖 {{ competitionDetail.awardConfig.first_prize }} 名
+        </el-tag>
+        <el-tag type="warning" style="margin-left:10px">
+          二等奖 {{ competitionDetail.awardConfig.second_prize }} 名
+        </el-tag>
+        <el-tag type="info" style="margin-left:10px">
+          三等奖 {{ competitionDetail.awardConfig.third_prize }} 名
+        </el-tag>
+      </div>
+
+    </el-dialog>
+
     <el-empty
       v-if="!loading && taskList.length === 0"
       description="暂无竞赛任务"
@@ -70,7 +140,7 @@
 import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import teacherService from '@/services/teacherService'
-import { useRouter } from 'vue-router'
+import adminService from '@/services/adminService'
 
 export default {
   name: 'TeacherTasks',
@@ -79,7 +149,9 @@ export default {
 
     const loading = ref(false)
     const taskList = ref([])
-    const router = useRouter()
+
+    const detailVisible = ref(false)
+    const competitionDetail = ref(null)
 
     const loadTasks = async () => {
       try {
@@ -90,6 +162,16 @@ export default {
         ElMessage.error('获取任务失败')
       } finally {
         loading.value = false
+      }
+    }
+
+    const openDetail = async (competitionId) => {
+      try {
+        const res = await adminService.getCompetitionDetail(competitionId)
+        competitionDetail.value = res.data
+        detailVisible.value = true
+      } catch (error) {
+        ElMessage.error('获取详情失败')
       }
     }
 
@@ -114,8 +196,13 @@ export default {
       return map[status] || 'info'
     }
 
-    const enterReview = (item) => {
-      router.push(`/teacher/review/${item.competition_id}`)
+    const getLevelText = (level) => {
+      const map = {
+        school: '校级',
+        provincial: '省级',
+        national: '国家级'
+      }
+      return map[level] || level
     }
 
     onMounted(loadTasks)
@@ -126,51 +213,11 @@ export default {
       formatDate,
       getStatusText,
       getStatusType,
-      enterReview
+      openDetail,
+      detailVisible,
+      competitionDetail,
+      getLevelText
     }
   }
 }
 </script>
-
-<style scoped>
-.teacher-tasks {
-  padding: 20px;
-}
-
-.page-header {
-  margin-bottom: 20px;
-}
-
-.task-card {
-  position: relative;
-  border-radius: 12px;
-  transition: 0.3s;
-  min-height: 220px;
-}
-
-.task-card:hover {
-  transform: translateY(-5px);
-}
-
-.status-tag {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-}
-
-.description {
-  color: #666;
-  margin: 10px 0;
-  min-height: 60px;
-}
-
-.time {
-  font-size: 13px;
-  color: #888;
-}
-
-.actions {
-  margin-top: 10px;
-  text-align: right;
-}
-</style>

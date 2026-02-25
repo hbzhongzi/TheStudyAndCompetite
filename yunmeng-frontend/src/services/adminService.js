@@ -196,6 +196,21 @@ export const adminService = {
     }
   },
 
+/**
+ * 获取竞赛详情
+ * @param {number} competitionId 竞赛ID
+ */
+  async getCompetitionDetail(competitionId) {
+    try {
+      const response = await api.get(`/admin/competitions/${competitionId}/detail`)
+      return response
+    } catch (error) {
+      console.error('获取竞赛详情失败:', error)
+      throw error
+    }
+  },
+
+
   /**
    * 获取系统统计概览
    */

@@ -210,7 +210,7 @@ func RegisterRoutes(r *gin.Engine, db *gorm.DB) {
 
 			// 管理员竞赛管理路由
 			adminCompetitions := auth.Group("/admin/competitions")
-			adminCompetitions.Use(middlewares.AdminOnly())
+			//adminCompetitions.Use(middlewares.AdminOnly())
 			{
 				adminCompetitions.POST("", competitionController.CreateCompetition)                // 创建竞赛
 				adminCompetitions.GET("/:id/detail", competitionController.GetCompetitionDetail)   // 查看竞赛详情

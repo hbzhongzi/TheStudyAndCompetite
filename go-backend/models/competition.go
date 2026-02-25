@@ -71,12 +71,13 @@ type CompetitionSubmission struct {
 	CompetitionID uint `json:"competition_id"`
 	StudentID     uint `json:"student_id"`
 
-	Title       string `json:"title"`
-	Description string `json:"description"`
-	FileURL     string `json:"file_url"`
-	FileSize    int64  `json:"file_size"`
-	Version     string `json:"version"`
-	Locked      bool   `json:"locked"`
+	Title         string `json:"title"`
+	Description   string `json:"description"`
+	FileURL       string `json:"file_url"`
+	FileSize      int64  `json:"file_size"`
+	Version       string `json:"version"`
+	Locked        bool   `json:"locked"`
+	TeacherViewed bool   `json:"teacher_viewed"`
 
 	SubmittedAt time.Time `json:"submitted_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
@@ -405,7 +406,7 @@ type CompetitionSubmissionResponse struct {
 	FileName        string     `json:"file_name"`
 	FileSize        int64      `json:"file_size"`
 	Description     string     `json:"description"`
-	Version         int        `json:"version"`
+	Version         string     `json:"version"`
 	SubmitTime      time.Time  `json:"submit_time"`
 	Status          string     `json:"status"`
 	ReviewComments  string     `json:"review_comments"`

@@ -289,9 +289,9 @@ class TeacherService {
   // ========== 竞赛相关API ==========
   
   // 获取我指导学生的竞赛报名列表
-  async getCompetitionRegistrations(params = {}) {
+  async getMyTasks() {
     try {
-      const response = await api.get('/teachers/competition-registrations', { params })
+      const response = await api.get('/teacher-projects/complete/list')
       return response
     } catch (error) {
       throw new Error(error.response?.data?.message || '获取竞赛报名列表失败')
@@ -310,9 +310,9 @@ class TeacherService {
 
 
   // 获取竞赛作品详情
-  async getCompetitionSubmission(submissionId) {
+  async getCompetitionSubmissions(submissionId) {
     try {
-      const response = await api.get(`/teachers/competition-submissions/${submissionId}`)
+      const response = await api.get(`/teacher-competitions/${submissionId}/submissions`)
       return response
     } catch (error) {
       throw new Error(error.response?.data?.message || '获取竞赛作品详情失败')
