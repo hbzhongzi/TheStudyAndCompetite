@@ -61,12 +61,12 @@
           </template>
         </el-table-column>
 
-        <el-table-column label="操作" width="240">
+        <el-table-column label="操作" width="340">
           <template #default="{ row }">
 
-<el-button size="small" @click="openDetailDialog(row)">
-  查看
-</el-button>
+            <el-button size="small" @click="openDetailDialog(row)">
+              查看
+            </el-button>
 
             <el-button size="small" type="primary" @click="downloadFile(row)">
               下载
@@ -74,6 +74,10 @@
 
             <el-button size="small" type="success" @click="openReviewDialog(row)">
               评审
+            </el-button>
+
+            <el-button size="small" type="warning" @click="openScoreHistory(row)">
+              评审记录
             </el-button>
 
           </template>
@@ -132,94 +136,115 @@
 
   </div>
 
-<!-- 作品详情弹窗 -->
-<el-dialog
-  v-model="detailDialogVisible"
-  title="作品详情"
-  width="600px"
->
-  <div v-if="currentDetail">
+  <!-- 作品详情弹窗 -->
+  <el-dialog
+    v-model="detailDialogVisible"
+    title="作品详情"
+    width="600px"
+  >
+    <div v-if="currentDetail">
 
-    <el-descriptions :column="2" border>
+      <el-descriptions :column="2" border>
 
-      <el-descriptions-item label="学生姓名">
-        {{ currentDetail.student?.realName }}
-      </el-descriptions-item>
+        <el-descriptions-item label="学生姓名">
+          {{ currentDetail.student?.realName }}
+        </el-descriptions-item>
 
-      <el-descriptions-item label="学院">
-        {{ currentDetail.student?.department }}
-      </el-descriptions-item>
+        <el-descriptions-item label="学院">
+          {{ currentDetail.student?.department }}
+        </el-descriptions-item>
 
-      <el-descriptions-item label="邮箱">
-        {{ currentDetail.student?.email }}
-      </el-descriptions-item>
+        <el-descriptions-item label="邮箱">
+          {{ currentDetail.student?.email }}
+        </el-descriptions-item>
 
-      <el-descriptions-item label="电话">
-        {{ currentDetail.student?.phone }}
-      </el-descriptions-item>
+        <el-descriptions-item label="电话">
+          {{ currentDetail.student?.phone }}
+        </el-descriptions-item>
 
-      <el-descriptions-item label="版本">
-        {{ currentDetail.version }}
-      </el-descriptions-item>
+        <el-descriptions-item label="版本">
+          {{ currentDetail.version }}
+        </el-descriptions-item>
 
-      <el-descriptions-item label="提交时间">
-        {{ formatDate(currentDetail.submit_time) }}
-      </el-descriptions-item>
+        <el-descriptions-item label="提交时间">
+          {{ formatDate(currentDetail.submit_time) }}
+        </el-descriptions-item>
 
-      <el-descriptions-item label="文件大小">
-        {{ (currentDetail.file_size / 1024).toFixed(2) }} KB
-      </el-descriptions-item>
+        <el-descriptions-item label="文件大小">
+          {{ (currentDetail.file_size / 1024).toFixed(2) }} KB
+        </el-descriptions-item>
 
-      <el-descriptions-item label="是否锁定">
-        <el-tag :type="currentDetail.locked ? 'danger' : 'success'">
-          {{ currentDetail.locked ? '已锁定' : '未锁定' }}
-        </el-tag>
-      </el-descriptions-item>
+      </el-descriptions>
 
-    </el-descriptions>
+      <el-divider />
 
-    <el-divider />
+      <h4>作品描述</h4>
+      <p>{{ currentDetail.description }}</p >
 
-    <h4>作品描述</h4>
-    <p>{{ currentDetail.description }}</p >
+      <el-divider />
 
-    <el-divider />
+      <el-button type="primary" @click="downloadFile(currentDetail)">
+        下载文件
+      </el-button>
 
-    <el-button type="primary" @click="downloadFile(currentDetail)">
-      下载文件
-    </el-button>
+    </div>
+  </el-dialog>
 
-  </div>
-</el-dialog>
+  <!-- 评分记录弹窗 -->
+  <el-dialog
+    v-model="scoreHistoryVisible"
+    title="评审记录"
+    width="650px"
+  >
+    <el-table
+      :data="scoreHistoryList"
+      border
+      stripe
+    >
+      <el-table-column label="评审人" width="120">
+        <template #default="{ row }">
+          {{ row.judge?.realName }}
+        </template>
+      </el-table-column>
+
+      <el-table-column label="学院" width="120">
+        <template #default="{ row }">
+          {{ row.judge?.department }}
+        </template>
+      </el-table-column>
+
+      <el-table-column prop="score" label="评分" width="80" />
+
+      <el-table-column prop="comment" label="评语" />
+
+      <el-table-column label="评分时间" width="160">
+        <template #default="{ row }">
+          {{ formatDate(row.scored_at) }}
+        </template>
+      </el-table-column>
+
+    </el-table>
+  </el-dialog>
 
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import  teacherService from '@/services/teacherService'
+import teacherService from '@/services/teacherService'
 
 const loading = ref(false)
- 
-// 左侧任务
+
 const competitionList = ref([])
 const activeCompetitionId = ref(null)
 
-// 右侧提交列表
 const submissionList = ref([])
 const total = ref(0)
 const currentPage = ref(1)
 
-// 详情弹窗
 const detailDialogVisible = ref(false)
 const currentDetail = ref(null)
 
-const openDetailDialog = (row) => {
-  currentDetail.value = row
-  detailDialogVisible.value = true
-}
-
-// 评审
 const reviewDialogVisible = ref(false)
 const reviewForm = ref({
   score: null,
@@ -227,19 +252,30 @@ const reviewForm = ref({
 })
 const currentRow = ref(null)
 
+const scoreHistoryVisible = ref(false)
+const scoreHistoryList = ref([])
 
-// 加载已分配竞赛
+const openDetailDialog = (row) => {
+  currentDetail.value = row
+  detailDialogVisible.value = true
+}
+
+const openScoreHistory = async (row) => {
+  try {
+    const res = await teacherService.getSubmissionScores(row.id)
+    scoreHistoryList.value = res.data
+    scoreHistoryVisible.value = true
+  } catch (error) {
+    ElMessage.error('获取评分记录失败')
+  }
+}
+
 const loadCompetitions = async () => {
   try {
     const res = await teacherService.getMyTasks()
-
     if (res.code === 200 && res.data.list.length > 0) {
       competitionList.value = res.data.list
-
-      // ✅ 默认选中第一个
-      const first = res.data.list[0]
-      activeCompetitionId.value = first.competition.id
-
+      activeCompetitionId.value = res.data.list[0].competition.id
       loadSubmissions()
     }
   } catch (error) {
@@ -247,11 +283,8 @@ const loadCompetitions = async () => {
   }
 }
 
-
-// 加载作品列表
 const loadSubmissions = async () => {
   if (!activeCompetitionId.value) return
-
   loading.value = true
   try {
     const res = await teacherService.getCompetitionSubmissions(
@@ -266,66 +299,46 @@ const loadSubmissions = async () => {
   loading.value = false
 }
 
-
-// 切换竞赛
 const handleSelectCompetition = (id) => {
   activeCompetitionId.value = id
   currentPage.value = 1
   loadSubmissions()
 }
 
-
-// 分页
 const handlePageChange = (page) => {
   currentPage.value = page
   loadSubmissions()
 }
 
-
-// 时间格式
 const formatDate = (time) => {
   if (!time) return '-'
   return time.replace('T', ' ').substring(0, 16)
 }
 
-
-// 文件预览
-const previewFile = (row) => {
-  window.open(
-    `http://localhost:8080/${row.file_url.replace(/\\/g, '/')}`
-  )
-}
-
-
-// 下载
 const downloadFile = (row) => {
   window.open(
     `http://localhost:8080/${row.file_url.replace(/\\/g, '/')}`
   )
 }
 
-
-// 打开评审
 const openReviewDialog = (row) => {
   currentRow.value = row
-  reviewForm.value.score = row.scores || 0
-  reviewForm.value.comment = row.teacher_feedback || ''
+  reviewForm.value.score = null
+  reviewForm.value.comment = ''
   reviewDialogVisible.value = true
 }
 
-
-// 提交评审
 const submitReview = async () => {
   try {
     await teacherService.submitSubmissionReview(
       currentRow.value.id,
       reviewForm.value
     )
-    ElMessage.success('评审成功')
+    ElMessage.success('提交评分成功')
     reviewDialogVisible.value = false
     loadSubmissions()
   } catch (error) {
-    ElMessage.error('评审失败')
+    ElMessage.error('评分失败')
   }
 }
 

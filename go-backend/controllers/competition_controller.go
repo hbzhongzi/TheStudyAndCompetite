@@ -592,7 +592,7 @@ func (c *CompetitionController) GetCompetitionRegistrations(ctx *gin.Context) {
 	size, _ := strconv.Atoi(ctx.DefaultQuery("size", "10"))
 	status := ctx.Query("status")
 
-	query := c.db.Model(&models.CompetitionRegistration{}).Where("competition_id = ?", id).Preload("Student.Profile")
+	query := c.db.Model(&models.CompetitionRegistration{}).Where("competition_id = ?", id).Preload("Competition")
 
 	if status != "" {
 		query = query.Where("status = ?", status)
@@ -610,7 +610,7 @@ func (c *CompetitionController) GetCompetitionRegistrations(ctx *gin.Context) {
 
 	// 分页查询
 	offset := (page - 1) * size
-	if err := query.Offset(offset).Limit(size).Order("register_time DESC").Find(&registrations).Error; err != nil {
+	if err := query.Offset(offset).Limit(size).Order("registration_time DESC").Find(&registrations).Error; err != nil {
 		log.Printf("获取报名记录失败: %v", err)
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"code":    500,

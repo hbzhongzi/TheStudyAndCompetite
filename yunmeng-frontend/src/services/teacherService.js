@@ -322,7 +322,7 @@ class TeacherService {
   // 提交作品评审意见
   async submitSubmissionReview(submissionId, reviewData) {
     try {
-      const response = await api.post(`/teachers/competition-submissions/${submissionId}/review`, reviewData)
+      const response = await api.post(`/teacher-competitions/submissions/${submissionId}/scores`, reviewData)
       return response
     } catch (error) {
       throw new Error(error.response?.data?.message || '提交作品评审失败')
@@ -365,9 +365,9 @@ class TeacherService {
   }
 
   // 获取竞赛审核记录
-  async getCompetitionReviews(competitionId) {
+  async getSubmissionScores(submissionId) {
     try {
-      const response = await api.get(`/competitions/${competitionId}/reviews`)
+      const response = await api.get(`/teacher-competitions/submissions/${submissionId}/scores`)
       return response
     } catch (error) {
       throw new Error(error.response?.data?.message || '获取竞赛审核记录失败')

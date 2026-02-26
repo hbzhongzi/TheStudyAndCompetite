@@ -218,8 +218,9 @@ func RegisterRoutes(r *gin.Engine, db *gorm.DB) {
 
 				adminCompetitions.DELETE("/:id", competitionController.DeleteCompetition)                      // 删除竞赛
 				adminCompetitions.GET("/:id/registrations", competitionController.GetCompetitionRegistrations) // 查看某竞赛所有报名
-				adminCompetitions.POST("/:id/result", competitionController.SubmitResult)                      // 登记成绩/获奖信息
-				adminCompetitions.GET("/:id/export", competitionController.ExportCompetitionData)              // 导出竞赛数据
+
+				adminCompetitions.POST("/:id/result", competitionController.SubmitResult)         // 登记成绩/获奖信息
+				adminCompetitions.GET("/:id/export", competitionController.ExportCompetitionData) // 导出竞赛数据
 
 				// 竞赛评审管理
 				adminCompetitions.POST("/judges/distribute", competitionController.AssignJudge) // 分配评审教师

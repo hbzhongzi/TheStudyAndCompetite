@@ -318,20 +318,10 @@ async toggleCompetitionOpen(id) {
   },
 
   // 提交参赛作品（学生）
-  async submitWork(competitionId, submissionData) {
+  async submitCompetitionResult(formData) {
     try {
-      const formData = new FormData()
-      formData.append('file_url', submissionData.file_url)
-      formData.append('file_name', submissionData.file_name)
-      formData.append('file_size', submissionData.file_size)
-      formData.append('description', submissionData.description)
       
-      // 添加文件
-      if (submissionData.file) {
-        formData.append('file', submissionData.file)
-      }
-
-      const response = await api.post(`/competitions/${competitionId}/upload`, formData, {
+      const response = await api.post('/student-competitions/submissions', formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }
