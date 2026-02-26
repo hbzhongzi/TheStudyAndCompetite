@@ -1166,7 +1166,7 @@ func (c *CompetitionController) SubmitScore(ctx *gin.Context) {
 	}
 
 	var request models.CompetitionScoreRequest
-	if err := ctx.ShouldBindJSON(&request); err != nil {
+	if err := ctx.ShouldBind(&request); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{
 			"code":    400,
 			"message": "请求参数错误",
@@ -1222,10 +1222,12 @@ func (c *CompetitionController) SubmitScore(ctx *gin.Context) {
 	} else {
 		// 创建新的评分记录
 		score := models.CompetitionScore{
-			SubmissionID: uint(submissionID),
-			JudgeID:      userID.(uint),
-			Score:        request.Score,
-			Comment:      request.Comment,
+			SubmissionID:  uint(submissionID),
+			JudgeID:       userID.(uint),
+			StudentID:     submission.StudentID,
+			CompetitionID: submission.CompetitionID,
+			Score:         request.Score,
+			Comment:       request.Comment,
 		}
 		if err := c.db.Create(&score).Error; err != nil {
 			log.Printf("提交评分失败: %v", err)
