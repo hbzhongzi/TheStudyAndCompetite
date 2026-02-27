@@ -124,11 +124,6 @@ func RegisterRoutes(r *gin.Engine, db *gorm.DB) {
 				adminProjects.GET("/types/stats", projectController.GetProjectTypeStats) // 获取项目分类统计
 
 				// =============================================
-				// 5. 审核流程增强路由（管理员）
-				// =============================================
-				adminProjects.POST("/review-flows", projectController.CreateReviewFlow) // 创建审核流程配置
-
-				// =============================================
 				// 6. 新增的管理员项目统计路由（兼容前端调用）
 				// =============================================
 				adminProjects.GET("/quality-report", projectController.GetProjectStats)   // 获取项目质量报告（使用项目统计）
@@ -218,6 +213,7 @@ func RegisterRoutes(r *gin.Engine, db *gorm.DB) {
 
 				adminCompetitions.DELETE("/:id", competitionController.DeleteCompetition)                      // 删除竞赛
 				adminCompetitions.GET("/:id/registrations", competitionController.GetCompetitionRegistrations) // 查看某竞赛所有报名
+				adminCompetitions.POST("/:id/verify", competitionController.VerifyRegistration)                // 管理员审核学生报名
 
 				adminCompetitions.POST("/:id/result", competitionController.SubmitResult)         // 登记成绩/获奖信息
 				adminCompetitions.GET("/:id/export", competitionController.ExportCompetitionData) // 导出竞赛数据

@@ -316,7 +316,7 @@ export default {
         loading.value = true
         const res = await competitionService.getCompetitions({
           page: page.value,
-          size: size.value
+          size: size.value,
         })
         competitions.value = res.data.list
         total.value = res.data.total

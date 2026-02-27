@@ -39,6 +39,7 @@ func (c *CompetitionController) GetCompetitionList(ctx *gin.Context) {
 	level := ctx.Query("level")
 	category := ctx.Query("category")
 	status := ctx.Query("status")
+	isopen := ctx.Query("is_open")
 
 	query := c.db.Model(&models.Competition{})
 
@@ -61,6 +62,10 @@ func (c *CompetitionController) GetCompetitionList(ctx *gin.Context) {
 
 	if status != "" {
 		query = query.Where("status = ?", status)
+	}
+
+	if isopen != "" {
+		query = query.Where("is_open = ?", isopen)
 	}
 
 	// 总数
@@ -643,6 +648,64 @@ func (c *CompetitionController) GetCompetitionRegistrations(ctx *gin.Context) {
 			"page":  page,
 			"size":  size,
 		},
+	})
+}
+
+// VerifyRegistration 管理员审核学生报名
+func (c *CompetitionController) VerifyRegistration(ctx *gin.Context) {
+	idStr := ctx.Param("id")
+	id, err := strconv.ParseUint(idStr, 10, 32)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"code":    400,
+			"message": "报名ID格式错误",
+		})
+		return
+	}
+
+	var registration models.CompetitionRegistration
+	if err := c.db.First(&registration, id).Error; err != nil {
+		ctx.JSON(http.StatusNotFound, gin.H{
+			"code":    404,
+			"message": "报名记录不存在",
+		})
+		return
+	}
+
+	var req models.CompetitionRegistrationVerifyRequest
+	if err := ctx.ShouldBind(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"code":    400,
+			"message": "参数错误",
+		})
+		return
+	}
+
+	if req.Status != "approved" && req.Status != "rejected" {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"code":    400,
+			"message": "状态值不合法",
+		})
+		return
+	}
+
+	if err := c.db.Model(&registration).Updates(map[string]interface{}{
+		"approved_by": 1,
+		"status":      req.Status,
+		"common":      req.Common,
+		"approved_at": time.Now(),
+	}).Error; err != nil {
+		log.Printf("更新报名状态失败: %v", err)
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"code":    500,
+			"message": "更新报名状态失败",
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{
+		"code":    200,
+		"message": "审核成功",
 	})
 }
 

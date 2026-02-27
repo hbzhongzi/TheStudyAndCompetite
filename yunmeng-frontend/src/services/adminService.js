@@ -57,6 +57,37 @@ export const adminService = {
     }
   },
 
+
+
+  /**
+   * 获取所有的项目列表
+   */
+  async getAllProjects() {
+    try {
+      const response = await api.get('/teacher-projects')
+      return response
+    } catch (error) {
+      console.error('获取项目统计数据失败:', error)
+      throw error
+    }
+  },
+
+  /**
+   * 获取项目详情
+   */
+  async getProjectDetail(id) {
+    try {
+      const response = await api.get(`/projects/detail` , {
+        params: { id }
+    })
+      return response
+    } catch (error) {
+      console.error('获取项目详情失败:', error)
+      throw error
+    }
+  },
+
+
   /**
    * 强制更新项目状态
    * @param {number} projectId 项目ID

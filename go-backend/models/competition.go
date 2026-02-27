@@ -60,6 +60,12 @@ type CompetitionRegistration struct {
 	Competition *Competition `json:"competition" gorm:"foreignKey:CompetitionID"`
 }
 
+// CompetitionRegistrationVerifyRequest 竞赛报名审核请求
+type CompetitionRegistrationVerifyRequest struct {
+	Status string `json:"status" binding:"required,oneof=approved rejected"`
+	Common string `json:"common"`
+}
+
 // TableName 指定表名
 func (CompetitionRegistration) TableName() string {
 	return "competition_registrations"

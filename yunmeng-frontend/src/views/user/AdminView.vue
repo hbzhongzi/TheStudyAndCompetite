@@ -56,8 +56,8 @@
                 <span>竞赛管理</span>
               </template>
               <el-menu-item index="competition-basic">基础竞赛管理</el-menu-item>
-              <el-menu-item index="competition-registrations">报名审核</el-menu-item>
-              <el-menu-item index="competition-results">结果管理</el-menu-item>
+              <el-menu-item index="competition-results">审核报名</el-menu-item>
+              <el-menu-item index="competition-registrations">竞赛任务分配</el-menu-item>
               <el-menu-item index="audit-logs">审计日志</el-menu-item>
             </el-sub-menu>
             <el-menu-item index="system">

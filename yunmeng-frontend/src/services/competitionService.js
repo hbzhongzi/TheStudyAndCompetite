@@ -146,6 +146,17 @@ async distributeJudge(distributeData) {
   }
 },
 
+//管理员审核学生报名
+async reviewCompetitionRegister(id, reviewData) {
+  try {
+    const response = await api.post(`/admin/competitions/${id}/verify`,reviewData)
+    return response
+  } catch (error) {
+    console.error('审核学生报名失败:', error)
+    throw error
+  }
+},
+
 
 // 切换开放状态
 async toggleCompetitionOpen(id) {
@@ -180,8 +191,11 @@ async toggleCompetitionOpen(id) {
     }
   },
 
+
+
+
   // 获取竞赛报名记录（管理员）
-  async getCompetitionRegistrations(competitionId, params = {}) {
+  async getCompetitionRegisters(competitionId, params = {}) {
     try {
       const response = await api.get(`/admin/competitions/${competitionId}/registrations`, { params })
       return response
