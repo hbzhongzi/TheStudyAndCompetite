@@ -146,54 +146,6 @@ func (c *ProjectController) CreateProject(ctx *gin.Context) {
 	})
 }
 
-// UpdateProject 更新项目
-func (c *ProjectController) UpdateProject(ctx *gin.Context) {
-	idStr := ctx.Param("id")
-	id, err := strconv.ParseUint(idStr, 10, 32)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{
-			"code":    400,
-			"message": "项目ID格式错误",
-		})
-		return
-	}
-
-	var req models.ProjectUpdateRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		log.Printf("参数绑定失败: %v", err)
-		ctx.JSON(http.StatusBadRequest, gin.H{
-			"code":    400,
-			"message": "参数错误: " + err.Error(),
-		})
-		return
-	}
-
-	// 从JWT中获取用户ID
-	userID, exists := ctx.Get("userID")
-	if !exists {
-		ctx.JSON(http.StatusUnauthorized, gin.H{
-			"code":    401,
-			"message": "未授权访问",
-		})
-		return
-	}
-
-	err = c.projectService.UpdateProject(uint(id), userID.(uint), req)
-	if err != nil {
-		log.Printf("更新项目失败: %v", err)
-		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"code":    500,
-			"message": "更新项目失败: " + err.Error(),
-		})
-		return
-	}
-
-	ctx.JSON(http.StatusOK, gin.H{
-		"code":    200,
-		"message": "项目更新成功",
-	})
-}
-
 // CreateExtensionApplication 创建项目延期申请
 func (c *ProjectController) CreateExtensionApplication(ctx *gin.Context) {
 	var req models.ExtensionApplicationRequest
@@ -1134,6 +1086,56 @@ func (c *ProjectController) GetTeacherListWithFilter(ctx *gin.Context) {
 	})
 }
 
+// ReviewStudentProjectFile 教师审核学生上传的项目文件
+func (c *ProjectController) ReviewStudentProjectFile(ctx *gin.Context) {
+	// 从JWT中获取当前用户ID
+	userID, exists := ctx.Get("userID")
+	if !exists {
+		ctx.JSON(http.StatusUnauthorized, gin.H{
+			"code":    401,
+			"message": "未获取到用户信息",
+		})
+		return
+	}
+
+	teacherID := userID.(uint)
+
+	fileIDStr := ctx.Param("fileId")
+	fileID, err := strconv.ParseUint(fileIDStr, 10, 32)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"code":    400,
+			"message": "文件ID格式错误",
+		})
+		return
+	}
+
+	var req models.ProjectFileReviewRequest
+	if err := ctx.ShouldBind(&req); err != nil {
+		log.Printf("参数绑定失败: %v", err)
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"code":    400,
+			"message": "参数错误: " + err.Error(),
+		})
+		return
+	}
+
+	err = c.projectService.ReviewStudentProjectFile(uint(fileID), teacherID, req)
+	if err != nil {
+		log.Printf("教师审核学生项目文件失败: %v", err)
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"code":    500,
+			"message": "审核失败: " + err.Error(),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{
+		"code":    200,
+		"message": "审核成功",
+	})
+}
+
 // BindStudentToTeacher 学生绑定教师（学生端接口）
 func (c *ProjectController) BindStudentToTeacher(ctx *gin.Context) {
 	// 从JWT中获取当前用户ID
@@ -1170,66 +1172,6 @@ func (c *ProjectController) BindStudentToTeacher(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, gin.H{
 		"code":    200,
 		"message": "绑定成功",
-	})
-}
-
-// UpdateProjectWithValidation 更新项目（带验证）
-func (c *ProjectController) UpdateProjectWithValidation(ctx *gin.Context) {
-	// 从JWT中获取当前用户ID
-	userID, exists := ctx.Get("userID")
-	if !exists {
-		ctx.JSON(http.StatusUnauthorized, gin.H{
-			"code":    401,
-			"message": "未获取到用户信息",
-		})
-		return
-	}
-
-	studentID := userID.(uint)
-
-	idStr := ctx.Param("id")
-	id, err := strconv.ParseUint(idStr, 10, 32)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{
-			"code":    400,
-			"message": "项目ID格式错误",
-		})
-		return
-	}
-
-	// 验证项目更新权限
-	err = c.projectService.ValidateProjectUpdate(uint(id), map[string]interface{}{"student_id": studentID})
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{
-			"code":    400,
-			"message": err.Error(),
-		})
-		return
-	}
-
-	var req models.ProjectUpdateRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		log.Printf("参数绑定失败: %v", err)
-		ctx.JSON(http.StatusBadRequest, gin.H{
-			"code":    400,
-			"message": "参数错误: " + err.Error(),
-		})
-		return
-	}
-
-	err = c.projectService.UpdateProject(uint(id), studentID, req)
-	if err != nil {
-		log.Printf("更新项目失败: %v", err)
-		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"code":    500,
-			"message": "更新项目失败: " + err.Error(),
-		})
-		return
-	}
-
-	ctx.JSON(http.StatusOK, gin.H{
-		"code":    200,
-		"message": "更新项目成功",
 	})
 }
 
@@ -1564,36 +1506,6 @@ func (c *ProjectController) ReviewProjectFile(ctx *gin.Context) {
 	})
 }
 
-// GetProjectFilesByType 按类型获取项目文件
-func (c *ProjectController) GetProjectFilesByType(ctx *gin.Context) {
-	projectIDStr := ctx.Param("projectId")
-	projectID, err := strconv.ParseUint(projectIDStr, 10, 32)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{
-			"code":    400,
-			"message": "项目ID格式错误",
-		})
-		return
-	}
-
-	fileType := ctx.Query("type")
-	files, err := c.projectService.GetProjectFilesByType(uint(projectID), fileType)
-	if err != nil {
-		log.Printf("获取项目文件失败: %v", err)
-		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"code":    500,
-			"message": "获取项目文件失败: " + err.Error(),
-		})
-		return
-	}
-
-	ctx.JSON(http.StatusOK, gin.H{
-		"code":    200,
-		"message": "获取项目文件成功",
-		"data":    files,
-	})
-}
-
 // =============================================
 // 4. 项目分类管理增强 API
 // =============================================
@@ -1851,54 +1763,6 @@ func (c *ProjectController) CreateStudentProject(ctx *gin.Context) {
 	})
 }
 
-// UpdateStudentProject 更新学生项目
-func (c *ProjectController) UpdateStudentProject(ctx *gin.Context) {
-	projectID, err := strconv.ParseUint(ctx.Param("id"), 10, 32)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{
-			"code":    400,
-			"message": "项目ID格式错误",
-		})
-		return
-	}
-
-	var req models.ProjectUpdateRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		log.Printf("参数绑定失败: %v", err)
-		ctx.JSON(http.StatusBadRequest, gin.H{
-			"code":    400,
-			"message": "参数错误: " + err.Error(),
-		})
-		return
-	}
-
-	// 获取当前登录用户ID
-	userID, exists := ctx.Get("user_id")
-	if !exists {
-		ctx.JSON(http.StatusUnauthorized, gin.H{
-			"code":    401,
-			"message": "用户未认证",
-		})
-		return
-	}
-
-	// 调用服务层更新项目
-	err = c.projectService.UpdateProject(uint(projectID), uint(userID.(float64)), req)
-	if err != nil {
-		log.Printf("更新项目失败: %v", err)
-		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"code":    500,
-			"message": "更新项目失败: " + err.Error(),
-		})
-		return
-	}
-
-	ctx.JSON(http.StatusOK, gin.H{
-		"code":    200,
-		"message": "更新项目成功",
-	})
-}
-
 // DeleteStudentProject 删除学生项目
 func (c *ProjectController) DeleteStudentProject(ctx *gin.Context) {
 	projectID, err := strconv.ParseUint(ctx.Param("id"), 10, 32)
@@ -2010,86 +1874,6 @@ func (c *ProjectController) UpdateStudentProjectProgress(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, gin.H{
 		"code":    200,
 		"message": "更新项目进度成功",
-	})
-}
-
-// GetStudentProjectFiles 获取学生项目文件
-func (c *ProjectController) GetStudentProjectFiles(ctx *gin.Context) {
-	projectID, err := strconv.ParseUint(ctx.Param("id"), 10, 32)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{
-			"code":    400,
-			"message": "项目ID格式错误",
-		})
-		return
-	}
-
-	fileType := ctx.Query("type")
-
-	// 调用服务层获取项目文件
-	files, err := c.projectService.GetProjectFilesByType(uint(projectID), fileType)
-	if err != nil {
-		log.Printf("获取项目文件失败: %v", err)
-		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"code":    500,
-			"message": "获取项目文件失败: " + err.Error(),
-		})
-		return
-	}
-
-	ctx.JSON(http.StatusOK, gin.H{
-		"code":    200,
-		"message": "获取项目文件成功",
-		"data":    files,
-	})
-}
-
-// UploadStudentProjectFile 上传学生项目文件
-func (c *ProjectController) UploadStudentProjectFile(ctx *gin.Context) {
-	projectID, err := strconv.ParseUint(ctx.Param("id"), 10, 32)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{
-			"code":    400,
-			"message": "项目ID格式错误",
-		})
-		return
-	}
-
-	var req models.ProjectFileUploadRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		log.Printf("参数绑定失败: %v", err)
-		ctx.JSON(http.StatusBadRequest, gin.H{
-			"code":    400,
-			"message": "参数错误: " + err.Error(),
-		})
-		return
-	}
-
-	// 获取当前登录用户ID
-	userID, exists := ctx.Get("user_id")
-	if !exists {
-		ctx.JSON(http.StatusUnauthorized, gin.H{
-			"code":    401,
-			"message": "用户未认证",
-		})
-		return
-	}
-
-	// 调用服务层上传项目文件
-	response, err := c.projectService.UploadProjectFile(uint(projectID), uint(userID.(float64)), req)
-	if err != nil {
-		log.Printf("上传项目文件失败: %v", err)
-		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"code":    500,
-			"message": "上传项目文件失败: " + err.Error(),
-		})
-		return
-	}
-
-	ctx.JSON(http.StatusOK, gin.H{
-		"code":    200,
-		"message": "上传项目文件成功",
-		"data":    response,
 	})
 }
 

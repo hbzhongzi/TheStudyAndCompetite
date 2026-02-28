@@ -78,6 +78,7 @@ func RegisterRoutes(r *gin.Engine, db *gorm.DB) {
 				teachers.POST("/ApproveExtensionApplication", projectController.ApproveExtensionApplication)     // 审批延期申请
 				teachers.GET("/TeacherExtensionApplications", projectController.GetTeacherExtensionApplications) // 教师查看延期申请列表
 				teachers.GET("/Stufiles", projectController.GetStudentProjectsFiles)                             // 获取指定学生的项目对应的文件列表
+				teachers.POST("/files/:fileId/review", projectController.ReviewStudentProjectFile)               // 教师审核学生提交的项目文件
 
 				teachers.GET("/filter", projectController.GetTeacherListWithFilter)                                 // 获取教师列表（支持院系筛选）
 				teachers.POST("/bind", projectController.BindStudentTeacher)                                        // 绑定学生和教师

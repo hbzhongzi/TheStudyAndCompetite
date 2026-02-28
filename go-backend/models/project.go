@@ -61,28 +61,6 @@ func (Project) TableName() string {
 	return "projects"
 }
 
-// ProjectFile 项目附件表
-type ProjectFile struct {
-	ID             uint       `gorm:"primaryKey;autoIncrement;column:id" json:"id"`
-	ProjectID      uint       `gorm:"not null;column:project_id" json:"projectId"`
-	FileName       string     `gorm:"size:100;column:file_name" json:"fileName"`
-	FileURL        string     `gorm:"size:255;column:file_url" json:"fileUrl"`
-	FileType       string     `gorm:"size:50;column:file_type" json:"fileType"`
-	FileVersion    string     `gorm:"size:20;column:file_version" json:"fileVersion"`
-	ReviewStatus   string     `gorm:"size:20;default:'pending';column:review_status" json:"reviewStatus"`
-	ReviewComments string     `gorm:"type:text;column:review_comments" json:"reviewComments"`
-	ReviewedBy     *uint      `gorm:"column:reviewed_by" json:"reviewedBy"`
-	ReviewedAt     *time.Time `gorm:"column:reviewed_at" json:"reviewedAt"`
-	FileSize       int64      `gorm:"column:file_size" json:"fileSize"`
-	DownloadCount  int        `gorm:"default:0;column:download_count" json:"downloadCount"`
-	IsPublic       bool       `gorm:"default:false;column:is_public" json:"isPublic"`
-	UploadTime     time.Time  `gorm:"column:upload_time;autoCreateTime" json:"uploadTime"`
-}
-
-func (pf *ProjectFile) TableName() string {
-	return "project_files"
-}
-
 // ProjectReview 项目审核记录表
 type ProjectReview struct {
 	ID uint `gorm:"column:id;primaryKey;autoIncrement" json:"id"`

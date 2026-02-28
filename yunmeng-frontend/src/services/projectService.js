@@ -253,5 +253,6 @@ async getProjectFiles(projectId) {
 }
 
 
+const projectService = new ProjectService()
 
-export const projectService = new ProjectService()
+export default projectService

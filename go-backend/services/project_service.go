@@ -347,7 +347,7 @@ func (s *ProjectService) SaveProjectFiles(
 			OriginalName: f.Filename,
 			FilePath:     fullPath,
 			FileSize:     f.Size,
-			Status:       "draft", // 默认状态为 draft
+			Status:       "pending", // 默认状态为 pending，等待教师审核
 			FileExt:      ext,
 			UploadedBy:   userID,
 			ProjectID:    projectID,
@@ -449,96 +449,6 @@ func detectCategory(ext string) string {
 	default:
 		return "other"
 	}
-}
-
-// UpdateProject 更新项目
-func (s *ProjectService) UpdateProject(id uint, studentID uint, req models.ProjectUpdateRequest) error {
-	// 检查项目是否存�?
-	var project models.Project
-	if err := s.db.First(&project, id).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return errors.New("项目不存在")
-		}
-		return err
-	}
-
-	// 检查权限：只有项目创建者可以修�?
-	if project.StudentID != studentID {
-		return errors.New("无权限修改此项目")
-	}
-
-	// 检查状态：只有草稿或已驳回状态的项目可以修改
-	if project.Status != "draft" && project.Status != "rejected" {
-		return errors.New("只有草稿或已驳回状态的项目可以修改")
-	}
-
-	// 开始事务
-	tx := s.db.Begin()
-	defer func() {
-		if r := recover(); r != nil {
-			tx.Rollback()
-		}
-	}()
-
-	// 更新项目基本信息
-	updates := make(map[string]interface{})
-	if req.Title != "" {
-		updates["title"] = req.Title
-	}
-	if req.Description != "" {
-		updates["description"] = req.Description
-	}
-	if req.Type != "" {
-		updates["type"] = req.Type
-	}
-	if req.Status != "" {
-		updates["status"] = req.Status
-	}
-	if req.TeacherID > 0 {
-		updates["teacher_id"] = req.TeacherID
-	}
-
-	if len(updates) > 0 {
-		if err := tx.Model(&project).Updates(updates).Error; err != nil {
-			tx.Rollback()
-			log.Printf("更新项目失败: %v", err)
-			return errors.New("更新项目失败")
-		}
-	}
-
-	// 更新项目文件
-	if req.Files != nil {
-		// 删除现有文件
-		if err := tx.Where("project_id = ?", id).Delete(&models.ProjectFile{}).Error; err != nil {
-			tx.Rollback()
-			log.Printf("删除项目文件失败: %v", err)
-			return errors.New("更新项目文件失败")
-		}
-
-		// 创建新文件
-		for _, fileReq := range req.Files {
-			file := models.ProjectFile{
-				ProjectID: id,
-				FileName:  fileReq.FileName,
-				FileURL:   fileReq.FileURL,
-			}
-
-			if err := tx.Create(&file).Error; err != nil {
-				tx.Rollback()
-				log.Printf("创建项目文件失败: %v", err)
-				return errors.New("更新项目文件失败")
-			}
-		}
-	}
-
-	// 提交事务
-	if err := tx.Commit().Error; err != nil {
-		log.Printf("提交事务失败: %v", err)
-		return errors.New("更新项目失败")
-	}
-
-	log.Printf("项目更新成功 - 项目ID: %d", id)
-	return nil
 }
 
 // DeleteProject 删除项目
@@ -1006,10 +916,9 @@ func (s *ProjectService) ApproveExtensionApplication(
 	case "rejected":
 		// 3.3 驳回延期申请
 		if err := tx.Model(&application).Updates(map[string]interface{}{
-			"status":         "rejected",
-			"reviewed_at":    now,
-			"reviewed_by":    teacherID,
-			"review_comment": req.Reason,
+			"status":        "rejected",
+			"reviewed_at":   now,
+			"review_reason": req.Reason,
 		}).Error; err != nil {
 			tx.Rollback()
 			return errors.New("驳回延期申请失败")
@@ -1538,69 +1447,10 @@ func (s *ProjectService) GetProjectProgress(
 	return logs, err
 }
 
-// =============================================
-// 3. 成果文件管理增强 - 新增方法
-// =============================================
-
-// UploadProjectFile 上传项目文件（增强版）
-func (s *ProjectService) UploadProjectFile(projectID uint, userID uint, req models.ProjectFileUploadRequest) (*models.ProjectFileEnhancedResponse, error) {
-	// 检查项目是否存在
-	var project models.Project
-	if err := s.db.First(&project, projectID).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, errors.New("项目不存在")
-		}
-		return nil, err
-	}
-
-	// 检查权限：只有项目相关人员可以上传文件
-	if project.StudentID != userID && project.TeacherID != userID {
-		return nil, errors.New("无权限为此项目上传文件")
-	}
-
-	// 创建文件记录
-	file := models.ProjectFile{
-		ProjectID:    projectID,
-		FileName:     req.FileName,
-		FileURL:      req.FileURL,
-		FileType:     req.FileType,
-		FileVersion:  req.FileVersion,
-		ReviewStatus: "pending",
-		IsPublic:     req.IsPublic,
-		UploadTime:   time.Now(),
-	}
-
-	if err := s.db.Create(&file).Error; err != nil {
-		log.Printf("创建项目文件记录失败: %v", err)
-		return nil, errors.New("创建项目文件记录失败")
-	}
-
-	// 转换为响应格式
-	response := &models.ProjectFileEnhancedResponse{
-		ID:             file.ID,
-		ProjectID:      file.ProjectID,
-		FileName:       file.FileName,
-		FileURL:        file.FileURL,
-		FileType:       file.FileType,
-		FileVersion:    file.FileVersion,
-		ReviewStatus:   file.ReviewStatus,
-		ReviewComments: file.ReviewComments,
-		ReviewedBy:     file.ReviewedBy,
-		ReviewedAt:     file.ReviewedAt,
-		FileSize:       file.FileSize,
-		DownloadCount:  file.DownloadCount,
-		IsPublic:       file.IsPublic,
-		UploadTime:     file.UploadTime,
-	}
-
-	log.Printf("项目文件上传成功 - 项目ID: %d, 文件ID: %d", projectID, file.ID)
-	return response, nil
-}
-
 // ReviewProjectFile 审核项目文件
 func (s *ProjectService) ReviewProjectFile(fileID uint, userID uint, req models.ProjectFileReviewRequest) error {
 	// 检查文件是否存在
-	var file models.ProjectFile
+	var file models.File
 	if err := s.db.First(&file, fileID).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return errors.New("文件不存在")
@@ -1649,44 +1499,6 @@ func (s *ProjectService) ReviewProjectFile(fileID uint, userID uint, req models.
 
 	log.Printf("项目文件审核完成 - 文件ID: %d, 审核结果: %s", fileID, req.ReviewStatus)
 	return nil
-}
-
-// GetProjectFilesByType 按类型获取项目文件
-func (s *ProjectService) GetProjectFilesByType(projectID uint, fileType string) ([]models.ProjectFileEnhancedResponse, error) {
-	var files []models.ProjectFile
-	query := s.db.Where("project_id = ?", projectID)
-
-	if fileType != "" {
-		query = query.Where("file_type = ?", fileType)
-	}
-
-	err := query.Order("upload_time DESC").Find(&files).Error
-	if err != nil {
-		return nil, err
-	}
-
-	var responses []models.ProjectFileEnhancedResponse
-	for _, file := range files {
-		response := models.ProjectFileEnhancedResponse{
-			ID:             file.ID,
-			ProjectID:      file.ProjectID,
-			FileName:       file.FileName,
-			FileURL:        file.FileURL,
-			FileType:       file.FileType,
-			FileVersion:    file.FileVersion,
-			ReviewStatus:   file.ReviewStatus,
-			ReviewComments: file.ReviewComments,
-			ReviewedBy:     file.ReviewedBy,
-			ReviewedAt:     file.ReviewedAt,
-			FileSize:       file.FileSize,
-			DownloadCount:  file.DownloadCount,
-			IsPublic:       file.IsPublic,
-			UploadTime:     file.UploadTime,
-		}
-		responses = append(responses, response)
-	}
-
-	return responses, nil
 }
 
 // GetFileTypeConfigs 获取文件类型配置
@@ -2113,6 +1925,41 @@ func (s *ProjectService) GetTeacherListWithFilter(params models.TeacherQueryPara
 	}
 
 	return responses, total, nil
+}
+
+// ReviewStudentProjectFile 审核学生项目文件
+func (s *ProjectService) ReviewStudentProjectFile(fileID uint, teacherID uint, req models.ProjectFileReviewRequest) error {
+	// 检查文件是否存在
+	var file models.File
+
+	if err := s.db.First(&file, fileID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return errors.New("文件不存在")
+		}
+		return nil
+	}
+
+	// 检查权限：只有指导教师可以审核文件
+	var project models.Project
+	if err := s.db.First(&project, file.ProjectID).Error; err != nil {
+		return errors.New("项目不存在")
+	}
+	if project.TeacherID != teacherID {
+		return errors.New("无权限审核此文件")
+	}
+
+	// 更新文件审核状态
+	updates := map[string]interface{}{
+		"status":      req.ReviewStatus,
+		"common":      req.ReviewComments,
+		"reviewed_at": time.Now(),
+	}
+	if err := s.db.Model(&file).Updates(updates).Error; err != nil {
+		log.Printf("更新文件审核状态失败: %v", err)
+		return errors.New("更新文件审核状态失败")
+	}
+	log.Printf("学生项目文件审核完成 - 文件ID: %d, 审核结果: %s", fileID, req.ReviewStatus)
+	return nil
 }
 
 // BindStudentToTeacher 绑定学生到教师

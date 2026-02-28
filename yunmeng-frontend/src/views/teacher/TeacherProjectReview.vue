@@ -266,9 +266,9 @@ const openReview = (row, status) => {
 
 const submitReview = async () => {
   await teacherService.updateProjectReviews({
-    ApplicationID: currentRow.value.id,
-    Action: reviewStatus.value,
-    Reason: reviewReason.value
+    applicationId : currentRow.value.id,
+    action: reviewStatus.value,
+    reason: reviewReason.value
   })
   ElMessage.success('审核完成')
   reviewVisible.value = false
