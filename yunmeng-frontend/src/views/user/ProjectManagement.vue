@@ -381,7 +381,7 @@ import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import ProjectDetail from '../../components/ProjectDetail.vue'
 import ProjectStatistics from './ProjectStatistics.vue'
-import { projectService } from '../../services/projectService'
+import  projectService from '@/services/projectService'
 import { adminService } from '../../services/adminService'
 
 // 响应式数据

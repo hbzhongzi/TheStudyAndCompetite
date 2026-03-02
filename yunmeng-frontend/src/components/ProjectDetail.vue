@@ -151,7 +151,7 @@
 import { ref, computed, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Document } from '@element-plus/icons-vue'
-import { projectService } from '../services/projectService'
+import  projectService  from '@/services/projectService'
 
 // Props
 const props = defineProps({

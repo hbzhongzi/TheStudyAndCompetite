@@ -175,7 +175,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { projectService } from '@/services/projectService'
+import  projectService from '@/services/projectService'
 
 /* ========= state ========= */
 const projects = ref([])

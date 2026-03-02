@@ -126,7 +126,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Refresh } from '@element-plus/icons-vue'
-import { projectService } from '../services/projectService'
+import  projectService  from '@/services/projectService'
 import ProjectForm from './ProjectForm.vue'
 import ProjectDetail from './ProjectDetail.vue'
 

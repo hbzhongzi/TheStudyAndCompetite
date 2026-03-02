@@ -238,7 +238,7 @@ import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
 import studentService from '@/services/studentService'
-import { projectService } from '@/services/projectService'
+import  projectService from '@/services/projectService'
 import teacherService  from '@/services/teacherService'
 
 /* ==================== 创建项目相关 ==================== */

@@ -475,7 +475,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import ProjectDetail from '../../components/ProjectDetail.vue'
 import ProjectForm from '../../components/ProjectForm.vue'
 import ProjectTemplates from '../../components/ProjectTemplates.vue'
-import { projectService } from '../../services/projectService'
+import  projectService from '@/services/projectService'
 import { studentService } from '../../services/studentService'
 
 // 响应式数据

@@ -211,7 +211,7 @@ import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Plus, Delete, Upload, Document, ArrowLeft } from '@element-plus/icons-vue'
-import { projectService } from '../../services/projectService'
+import  projectService from '@/services/projectService'
 import { getToken } from '../../services/auth'
 
 const route = useRoute()

@@ -442,7 +442,7 @@
 import { ref, reactive, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { projectService } from '@/services/projectService'
+import  projectService from '@/services/projectService'
 import ProjectFileList from '@/components/ProjectFileList.vue'
 
 export default {
