@@ -709,6 +709,60 @@ func (c *CompetitionController) VerifyRegistration(ctx *gin.Context) {
 	})
 }
 
+// GetCompetitionScores 管理员查看指定竞赛的评分列表
+func (c *CompetitionController) GetCompetitionScores(ctx *gin.Context) {
+	//  获取竞赛ID
+	idStr := ctx.Param("id")
+	id, err := strconv.ParseUint(idStr, 10, 32)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"code":    400,
+			"message": "竞赛ID格式错误",
+		})
+		return
+	}
+	competitionID := uint(id)
+
+	// 查询竞赛是否存在
+	var competition models.Competition
+	if err := c.db.First(&competition, competitionID).Error; err != nil {
+		ctx.JSON(http.StatusNotFound, gin.H{
+			"code":    404,
+			"message": "竞赛不存在",
+		})
+		return
+	}
+
+	// 查询评分记录（包含关联）
+	var scores []models.CompetitionScore
+	if err := c.db.
+		Where("competition_id = ?", competitionID).
+		Preload("Submission").
+		Preload("Submission.Student").
+		Preload("Judge").
+		Order("scored_at DESC").
+		Find(&scores).Error; err != nil {
+
+		log.Printf("获取评分列表失败: %v", err)
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"code":    500,
+			"message": "获取评分列表失败",
+		})
+		return
+	}
+
+	// 返回结果
+	ctx.JSON(http.StatusOK, gin.H{
+		"code":    200,
+		"message": "获取评分列表成功",
+		"data": gin.H{
+			"competition": competition,
+			"scores":      scores,
+			"total":       len(scores),
+		},
+	})
+}
+
 // GetCompetitionSubmissions 查看竞赛提交作品（教师/管理员）
 func (c *CompetitionController) GetCompetitionSubmissions(ctx *gin.Context) {
 	idStr := ctx.Param("id")
