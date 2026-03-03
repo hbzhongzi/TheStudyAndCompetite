@@ -32,22 +32,7 @@
           </div>
         </el-card>
       </el-col>
-      <el-col :span="6">
-        <el-card class="stats-card">
-          <div class="stats-content">
-            <div class="stats-number">{{ stats.newUsersToday }}</div>
-            <div class="stats-label">今日新增</div>
-          </div>
-        </el-card>
-      </el-col>
-      <el-col :span="6">
-        <el-card class="stats-card">
-          <div class="stats-content">
-            <div class="stats-number">{{ stats.onlineUsers }}</div>
-            <div class="stats-label">在线用户</div>
-          </div>
-        </el-card>
-      </el-col>
+
     </el-row>
 
     <!-- 搜索和筛选 -->
@@ -151,13 +136,6 @@
           <template #default="scope">
             <el-button size="small" @click="viewUser(scope.row)">查看</el-button>
             <el-button size="small" type="primary" @click="editUser(scope.row)">编辑</el-button>
-            <el-button 
-              size="small" 
-              :type="scope.row.status === 'active' ? 'danger' : 'success'"
-              @click="toggleUserStatus(scope.row)"
-            >
-              {{ scope.row.status === 'active' ? '禁用' : '启用' }}
-            </el-button>
             <el-button size="small" type="warning" @click="resetPassword(scope.row)">重置密码</el-button>
             <el-button size="small" type="danger" @click="deleteUser(scope.row)">删除</el-button>
           </template>

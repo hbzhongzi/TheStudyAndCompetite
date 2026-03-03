@@ -45,7 +45,7 @@
                 <span>项目管理</span>
               </template>
               <el-menu-item index="project-overview">项目概览</el-menu-item>
-              <el-menu-item index="project-review">项目审核</el-menu-item>
+              <el-menu-item index="project-review">权限信息维护</el-menu-item>
               <el-menu-item index="project-types">分类管理</el-menu-item>
               <el-menu-item index="review-flows">审核流程</el-menu-item>
               <el-menu-item index="project-stats">项目统计</el-menu-item>
