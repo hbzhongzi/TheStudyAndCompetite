@@ -109,6 +109,86 @@ func (c *AdminController) GetUserOverview(ctx *gin.Context) {
 	})
 }
 
+// GetProjectOverview 获取项目总体统计数据
+func (c *AdminController) GetProjectOverview(ctx *gin.Context) {
+
+	var total int64
+	var draft int64
+	var submitted int64
+	var reviewing int64
+	var approved int64
+	var rejected int64
+	var completed int64
+	c.userService.GetDB().Model(&models.Project{}).Count(&total)
+
+	c.userService.GetDB().Model(&models.Project{}).Count(&total)
+	c.userService.GetDB().Model(&models.Project{}).Where("status = ?", "draft").Count(&draft)
+	c.userService.GetDB().Model(&models.Project{}).Where("status = ?", "submitted").Count(&submitted)
+	c.userService.GetDB().Model(&models.Project{}).Where("status = ?", "reviewing").Count(&reviewing)
+	c.userService.GetDB().Model(&models.Project{}).Where("status = ?", "approved").Count(&approved)
+	c.userService.GetDB().Model(&models.Project{}).Where("status = ?", "rejected").Count(&rejected)
+	c.userService.GetDB().Model(&models.Project{}).Where("status = ?", "completed").Count(&completed)
+
+	ctx.JSON(200, gin.H{
+		"code": 200,
+		"data": gin.H{
+			"total":     total,
+			"draft":     draft,
+			"submitted": submitted,
+			"reviewing": reviewing,
+			"approved":  approved,
+			"rejected":  rejected,
+			"completed": completed,
+		},
+		"message": "获取统计成功",
+	})
+}
+
+// GetProjectMonthlyStat 获取项目月度统计数据
+func (c *AdminController) GetProjectMonthlyStat(ctx *gin.Context) {
+
+	type Result struct {
+		Month string
+		Count int64
+	}
+
+	var results []Result
+
+	c.userService.GetDB().Raw(`
+		SELECT DATE_FORMAT(created_at, '%Y-%m') as month,
+		       COUNT(*) as count
+		FROM projects
+		GROUP BY month
+		ORDER BY month
+	`).Scan(&results)
+
+	ctx.JSON(200, gin.H{
+		"code": 200,
+		"data": results,
+	})
+}
+
+// GetProjectStatusStats 获取项目状态统计数据
+func (c *AdminController) GetProjectStatusStats(ctx *gin.Context) {
+
+	type Result struct {
+		Status string
+		Count  int64
+	}
+
+	var results []Result
+
+	c.userService.GetDB().Model(&models.Project{}).
+		Select("status, count(*) as count").
+		Group("status").
+		Scan(&results)
+
+	ctx.JSON(200, gin.H{
+		"code": 200,
+		"data": results,
+	})
+}
+
 // GetSystemLogs 获取系统日志
 func (c *AdminController) GetSystemLogs(ctx *gin.Context) {
 	page, _ := ctx.GetQuery("page")

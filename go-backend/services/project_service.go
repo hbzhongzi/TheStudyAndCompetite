@@ -556,7 +556,7 @@ func (s *ProjectService) GetProjectStats(userID uint) (*ProjectStats, error) {
 
 	// 进行中项目
 	s.db.Table("projects").
-		Where("student_id = ? AND status = ?", userID, "ongoing").
+		Where("student_id = ? AND status = ?", userID, "approved").
 		Count(&stats.OngoingProjects)
 
 	// 已完成项目
@@ -566,7 +566,7 @@ func (s *ProjectService) GetProjectStats(userID uint) (*ProjectStats, error) {
 
 	// 待审核项目
 	s.db.Table("projects").
-		Where("student_id = ? AND status = ?", userID, "pending").
+		Where("student_id = ? AND status = ?", userID, "submitted").
 		Count(&stats.PendingProjects)
 
 	return stats, nil

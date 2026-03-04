@@ -46,9 +46,8 @@
               </template>
               <el-menu-item index="project-overview">项目概览</el-menu-item>
               <el-menu-item index="project-review">权限信息维护</el-menu-item>
-              <el-menu-item index="project-types">分类管理</el-menu-item>
+              <el-menu-item index="project-types">项目数据统计</el-menu-item>
               <el-menu-item index="review-flows">审核流程</el-menu-item>
-              <el-menu-item index="project-stats">项目统计</el-menu-item>
             </el-sub-menu>
             <el-sub-menu index="competitions">
               <template #title>
@@ -105,9 +104,7 @@
             <div v-else-if="activeMenu === 'review-flows'" class="welcome-content">
               <ReviewFlows />
             </div>
-            <div v-else-if="activeMenu === 'project-stats'" class="welcome-content">
-              <ProjectStats />
-            </div>
+
             
             <!-- 竞赛管理页面 -->
             <div v-else-if="activeMenu === 'competition-basic'" class="welcome-content">
@@ -167,7 +164,6 @@ import DashboardView from './DashboardView.vue'
 import ProjectOverview from './ProjectOverview.vue'
 import ProjectReview from './ProjectReview.vue'
 import ReviewFlows from './ReviewFlows.vue'
-import ProjectStats from './ProjectStats.vue'
 
 const router = useRouter()
 const activeMenu = ref('dashboard')
@@ -177,10 +173,9 @@ const pageTitle = computed(() => {
     dashboard: '系统概览',
     users: '用户管理',
     'project-overview': '项目概览',
-    'project-review': '项目审核',
-    'project-types': '项目分类管理',
+    'project-review': '权限信息维护',
+    'project-types': '项目数据统计',
     'review-flows': '审核流程',
-    'project-stats': '项目统计',
     'competition-basic': '基础竞赛管理',
     'competition-registrations': '报名审核',
     'competition-results': '结果管理',

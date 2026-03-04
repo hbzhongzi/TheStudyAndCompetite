@@ -254,6 +254,45 @@ export const adminService = {
       throw error
     }
   },
+   /**
+   * 获取系统统计概览
+   */
+  async getOverview() {
+    try {
+      const response = await api.get('/admin/project-overview')
+      return response
+    } catch (error) {
+      console.error('获取系统概览失败:', error)
+      throw error
+    }
+  },
+   /**
+   * 获取系统月度统计概览
+   */
+  async getmonthlyOverview() {
+    try {
+      const response = await api.get('/admin/project-monthly-stats')
+      return response
+    } catch (error) {
+      console.error('获取系统月度统计概览失败:', error)
+      throw error
+    }
+  },
+
+
+
+   /**
+   * 获取项目状态统计概览
+   */
+  async getStatusStats() {
+    try {
+      const response = await api.get('/admin/project-status-stats')
+      return response
+    } catch (error) {
+      console.error('获取项目状态统计概览失败:', error)
+      throw error
+    }
+  },
 
   /**
    * 获取用户活跃度统计

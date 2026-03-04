@@ -262,6 +262,13 @@ func RegisterRoutes(r *gin.Engine, db *gorm.DB) {
 				admin.GET("/dashboard/stats", adminController.GetDashboardStats) // 获取仪表板统计数据 (兼容前端调用)
 				admin.GET("/overview", adminController.GetUserOverview)          // 获取用户概览
 
+				// GetProjectOverview 获取项目总体统计
+				admin.GET("/project-overview", adminController.GetProjectOverview) // 获取项目总体统计
+				//GetProjectMonthlyStat 获取项目月度统计
+				admin.GET("/project-monthly-stats", adminController.GetProjectMonthlyStat) // 获取项目月度统计
+				//GetProjectStatusStats 获取项目状态统计
+				admin.GET("/project-status-stats", adminController.GetProjectStatusStats) // 获取项目状态统计
+
 				// 系统管理
 				admin.GET("/logs", systemController.GetSystemLogs)                         // 获取系统日志
 				admin.GET("/logs/summary", systemController.GetSystemLogsSummary)          // 获取系统日志统计
