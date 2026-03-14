@@ -43,7 +43,6 @@
               <el-menu-item index="project-overview">项目概览</el-menu-item>
               <el-menu-item index="project-detail">项目详情</el-menu-item>
               <el-menu-item index="project-review">延期审核</el-menu-item>
-              <el-menu-item index="project-files">文件审核</el-menu-item>
 
             </el-sub-menu>
             <el-menu-item index="students">
@@ -265,7 +264,6 @@ const pageTitle = computed(() => {
     projects: '项目管理',
     'project-overview': '项目概览',
     'project-review': '项目审核',
-    'project-files': '文件审核',
     'review-tasks': '审核任务',
     students: '学生管理',
     competitions: '竞赛指导',
